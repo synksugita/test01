@@ -1,0 +1,145 @@
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/5.1.3/pixi.min.js"></script>
+
+<script>
+
+//definition
+//--------------------------------
+
+//キー
+class Key{
+constructor(){
+this.Right = 0;
+this.Left = 0;
+this.Down = 0;
+this.Up = 0;
+}
+}
+var key = new Key();
+var moveValue = 1;
+
+class Charactor{
+constructor(X,Y)
+{
+this.x = X;
+this.y = Y;
+}
+}
+class Player extends Charactor{
+
+}
+class GameObject extends Charactor{
+
+}
+
+//時間
+var start = new Date();
+var date = new Date();
+var div = document.createElement("div");
+div.id = "div";
+var nowtime = document.createElement("p");
+nowtime.id = "id_time";
+nowtime.textContent = "nowtime";
+div.appendChild(nowtime);
+
+var score = document.createElement("p");
+score.id = "id_score";
+score.textContent = "score";
+div.appendChild(score);
+
+//--------------------------------
+
+
+//initialization
+//--------------------------------
+
+//アプリ初期化
+const app = new PIXI.Application();
+document.body.appendChild(app.view);
+var stage = app.stage.addChild(new PIXI.Graphics());
+
+//関数ループ命令
+app.ticker.add(delta => this.gameloop(delta));
+
+//イベントリスナー定義(キー入力、アップ・ダウン)
+window.addEventListener("keydown", (event) => {this.downHandler(event)}, false);
+window.addEventListener("keyup", (event) => {this.upHandler(event)}, false);
+
+//四角表示
+const square = new PIXI.Graphics();
+square.width = 100;
+square.height = 100;
+square.x = app.screen.width/2;
+square.y = app.screen.height/2;
+square.beginFill(0xff00ff);
+square.drawRect(0,0,100,100);
+square.endFill();
+app.stage.addChild(square);
+
+//テクスチャ
+var texture = PIXI.Texture.fromImage("icon_160730_256.png");
+var sprite = new PIXI.Sprite(texture);
+sprite.x = 100;
+sprite.y = 100;
+sprite.width  = 100;
+sprite.height = 100;
+app.stage.addChild(sprite);
+
+//--------------------------------
+
+
+//function
+//--------------------------------
+
+//キーダウン
+function downHandler(event){
+switch(event.key){
+case 'ArrowRight': key.Right = 1; break;
+case 'ArrowLeft': key.Left = 1; break;
+case 'ArrowDown': key.Down = 1; break;
+case 'ArrowUp': key.Up = 1; break;
+}
+}
+//キーアップ
+function upHandler(event){
+switch(event.key){
+case 'ArrowRight': key.Right = 0; break;
+case 'ArrowLeft': key.Left = 0; break;
+case 'ArrowDown': key.Down = 0; break;
+case 'ArrowUp': key.Up = 0; break;
+}
+}
+
+//--------------------------------
+
+
+//mainloop
+//--------------------------------
+
+function gameloop(delta){
+date = new Date();//update time
+
+if(key.Right){square.x += moveValue;}
+if(key.Left){square.x -= moveValue;}
+if(key.Down){square.y += moveValue;}
+if(key.Up){square.y -= moveValue;}
+
+sprite.x = square.x;
+sprite.y = square.y;
+
+nowtime.innerHTML = date.getTime() - start.getTime();
+score.innerHTML = Math.random()*100;
+}
+
+//--------------------------------
+
+
+//others
+//--------------------------------
+
+document.body.appendChild(div);
+
+//--------------------------------
+
+</script>
+</body>
