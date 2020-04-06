@@ -15,7 +15,7 @@ class Key{
 		this.Up = 0;
 	}
 }
-var key = new Key();
+const key = new Key();
 
 class GameObject{
 
@@ -41,7 +41,7 @@ class GameObject{
 	release(){
 		this.kind = 0;
 		this.sprite.texture = 0;
-		this.moveValue = 0;
+		//this.moveValue = 0;
 	}
 
 	update(){
@@ -75,10 +75,11 @@ class Watch{
 	}
 
 }
-var watch = new Watch();
-var InitialTime = 30;
+const watch = new Watch();
+const InitialTime = 30;
 
-var score = 0;
+let score = 0;
+let timeOld = InitialTime;
 
 //--------------------------------
 
@@ -89,18 +90,17 @@ var score = 0;
 //アプリ初期化
 const app = new PIXI.Application();
 document.body.appendChild(app.view);
-var stage = app.stage.addChild(new PIXI.Graphics());
-var displayObject = new PIXI.DisplayObject;
+let stage = app.stage.addChild(new PIXI.Graphics());
 
-var textTime = new PIXI.Text('TIME',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'});
+let textTime = new PIXI.Text('TIME',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'});
 textTime.x = app.screen.width/2;
 stage.addChild(textTime);
-var textScore = new PIXI.Text('SCORE',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'});
+let textScore = new PIXI.Text('SCORE',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'});
 textScore.x = app.screen.width/4*3;
 stage.addChild(textScore);
 
 //テクスチャ
-var texture = [];
+let texture = [];
 texture[0] = PIXI.Texture.from("numbers/0.png");
 texture[1] = PIXI.Texture.from("numbers/1.png");
 texture[2] = PIXI.Texture.from("numbers/2.png");
@@ -112,12 +112,7 @@ texture[7] = PIXI.Texture.from("numbers/7.png");
 texture[8] = PIXI.Texture.from("numbers/8.png");
 texture[9] = PIXI.Texture.from("numbers/9.png");
 
-const classArray = [
-	new GameObject(),
-	new GameObject(),
-	new GameObject(),
-	new GameObject()
-];
+const classArray = new Array();
 
 //計測開始
 watch.start();
@@ -127,33 +122,48 @@ app.ticker.add(delta => this.gameloop(delta));
 
 //--------------------------------
 
+//function
+//--------------------------------
+
+function createObject(){
+	const obj = new GameObject();
+	obj.create();
+	classArray.push(obj);
+}
+
+function releaseObject(number){
+	let obj = classArray.splice(number,1);
+	obj[0].release();
+}
+
+//--------------------------------
+
 
 //mainloop
 //--------------------------------
 
 function gameloop(delta){
 
-	var passedtime = parseInt(InitialTime - watch.getPassedTime()/1000);
+	const passedtime = parseInt(InitialTime - watch.getPassedTime()/1000);
 
 	textTime.text = "TIME : " + passedtime;
 	textScore.text = "SCORE : " + score;
 
 	if(passedtime > 0){
+		if(passedtime != timeOld){
+			createObject();
+		}
+		timeOld = passedtime;
 		watch.update();
-		for(var i = 0; i < classArray.length; i++){
-			if(classArray[i].kind == 0){
-				classArray[i].create();
-			}
-			else{
-				classArray[i].update();
-			}
+		for(let i = 0; i < classArray.length; i++){
+			classArray[i].update();
 			if(classArray[i].sprite.y > app.screen.height){
-				classArray[i].release();
+				releaseObject(i);
 			}
 		}
 	}
 	else{
-		for(var i = 0; i < classArray.length; i++){
+		for(let i = 0; i < classArray.length; i++){
 			classArray[i].release();
 		}
 	}
