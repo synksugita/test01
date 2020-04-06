@@ -8,72 +8,71 @@
 
 //キー
 class Key{
-constructor(){
-this.Right = 0;
-this.Left = 0;
-this.Down = 0;
-this.Up = 0;
-}
+	constructor(){
+		this.Right = 0;
+		this.Left = 0;
+		this.Down = 0;
+		this.Up = 0;
+	}
 }
 var key = new Key();
 
 class GameObject{
 
-constructor(){
-this.kind = 0;
-this.moveValue = 0;
-this.sprite = new PIXI.Sprite();
-this.sprite.width  = 50;
-this.sprite.height = 50;
-this.sprite.interactive = true;
-this.sprite.on('click',(function(obj){return function(){obj.onClick();}})(this));
-app.stage.addChild(this.sprite);
+	constructor(){
+		this.kind = 0;
+		this.moveValue = 0;
+		this.sprite = new PIXI.Sprite();
+		this.sprite.width  = 50;
+		this.sprite.height = 50;
+		this.sprite.interactive = true;
+		this.sprite.on('click',(function(obj){return function(){obj.onClick();}})(this));
+		app.stage.addChild(this.sprite);
+	}
 
-}
+	create(){
+		this.kind = parseInt(Math.random() * 10 + 1);//1~10
+		this.sprite.texture = texture[this.kind - 1];//0~9
+		this.sprite.x = Math.random() * (app.screen.width - this.sprite.width);
+		this.sprite.y = 0 - this.sprite.height;
+		this.moveValue = this.kind;
+	}
 
-create(){
-this.kind = parseInt(Math.random() * 10 + 1);//1~10
-this.sprite.texture = texture[this.kind - 1];//0~9
-this.sprite.x = Math.random() * (app.screen.width - this.sprite.width);
-this.sprite.y = 0 - this.sprite.height;
-this.moveValue = this.kind;
-}
+	release(){
+		this.kind = 0;
+		this.sprite.texture = 0;
+		this.moveValue = 0;
+	}
 
-release(){
-this.kind = 0;
-this.sprite.texture = 0;
-this.moveValue = 0;
-}
+	update(){
+		this.sprite.y += this.moveValue;
+	}
 
-update(){
-this.sprite.y += this.moveValue;
-}
-
-onClick(){
-score += this.kind;
-this.release();
-}
+	onClick(){
+		score += this.kind;
+		this.release();
+	}
 
 }
 
 class Watch{
 
-constructor(){
-this.dateStart = new Date();
-this.dateNow = new Date();
-}
+	constructor(){
+		this.dateStart = new Date();
+		this.dateNow = new Date();
+	}
 
-start(){
-this.dateStart = new Date();
-}
+	start(){
+		this.dateStart = new Date();
+	}
 
-update(){
-this.dateNow = new Date();
-}
+	update(){
+		this.dateNow = new Date();
+	}
 
-getPassedTime(){
-return (this.dateNow.getTime() - this.dateStart.getTime());
-}
+	getPassedTime(){
+		return (this.dateNow.getTime() - this.dateStart.getTime());
+	}
 
 }
 var watch = new Watch();
@@ -114,23 +113,17 @@ texture[8] = PIXI.Texture.from("numbers/8.png");
 texture[9] = PIXI.Texture.from("numbers/9.png");
 
 const classArray = [
-new GameObject(),
-new GameObject(),
-new GameObject(),
-new GameObject()
+	new GameObject(),
+	new GameObject(),
+	new GameObject(),
+	new GameObject()
 ];
 
-
+//計測開始
 watch.start();
 
 //関数ループ命令
 app.ticker.add(delta => this.gameloop(delta));
-
-//--------------------------------
-
-
-//function
-//--------------------------------
 
 //--------------------------------
 
@@ -140,57 +133,31 @@ app.ticker.add(delta => this.gameloop(delta));
 
 function gameloop(delta){
 
-var passedtime = parseInt(InitialTime - watch.getPassedTime()/1000);
+	var passedtime = parseInt(InitialTime - watch.getPassedTime()/1000);
 
-var string = new String("TIME : " + passedtime);
-textTime.x = app.screen.width/2 - string.length;
-textTime.text = "TIME : " + passedtime;
-textScore.text = "SCORE : " + score;
+	textTime.text = "TIME : " + passedtime;
+	textScore.text = "SCORE : " + score;
 
-if(passedtime > 0){
-
-watch.update();
-
-//date = new Date();//update time
-
-//if(key.Right){square.x += moveValue;}
-//if(key.Left){square.x -= moveValue;}
-//if(key.Down){square.y += moveValue;}
-//if(key.Up){square.y -= moveValue;}
-
-//sprite.x = square.x;
-//sprite.y = square.y;
-
-for(var i = 0; i < classArray.length; i++){
-if(classArray[i].kind == 0){
-classArray[i].create();
+	if(passedtime > 0){
+		watch.update();
+		for(var i = 0; i < classArray.length; i++){
+			if(classArray[i].kind == 0){
+				classArray[i].create();
+			}
+			else{
+				classArray[i].update();
+			}
+			if(classArray[i].sprite.y > app.screen.height){
+				classArray[i].release();
+			}
+		}
+	}
+	else{
+		for(var i = 0; i < classArray.length; i++){
+			classArray[i].release();
+		}
+	}
 }
-else{
-classArray[i].update();
-}
-if(classArray[i].sprite.y > app.screen.height){
-classArray[i].release();
-}
-}
-
-}
-
-else{
-
-for(var i = 0; i < classArray.length; i++){
-classArray[i].release();
-}
-
-}
-
-
-}
-
-//--------------------------------
-
-
-//others
-//--------------------------------
 
 //--------------------------------
 
