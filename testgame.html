@@ -6,8 +6,6 @@
 //definition
 //--------------------------------
 
-//ゲームオブジェクト
-
 //キー
 class Key{
 constructor(){
@@ -18,7 +16,6 @@ this.Up = 0;
 }
 }
 var key = new Key();
-var moveValue = 10;
 
 class GameObject{
 
@@ -29,14 +26,15 @@ this.sprite = new PIXI.Sprite();
 this.sprite.width  = 50;
 this.sprite.height = 50;
 this.sprite.interactive = true;
-this.sprite.on('click',this.onClick);
+this.sprite.on('click',(function(obj){return function(){obj.onClick();}})(this));
 app.stage.addChild(this.sprite);
+
 }
 
 create(){
 this.kind = parseInt(Math.random() * 10 + 1);//1~10
 this.sprite.texture = texture[this.kind - 1];//0~9
-this.sprite.x = Math.random() * app.screen.width;
+this.sprite.x = Math.random() * (app.screen.width - this.sprite.width);
 this.sprite.y = 0 - this.sprite.height;
 this.moveValue = this.kind;
 }
@@ -52,34 +50,36 @@ this.sprite.y += this.moveValue;
 }
 
 onClick(){
-click += moveValue;
+score += this.kind;
 this.release();
 }
 
 }
 
-var click = 0;
+class Watch{
 
+constructor(){
+this.dateStart = new Date();
+this.dateNow = new Date();
+}
 
-//時間
-var start = new Date();
-var date = new Date();
-//var div = document.createElement("div");
-//div.id = "div";
-//var nowtime = document.createElement("p");
-//nowtime.id = "id_time";
-//nowtime.textContent = "nowtime";
-//div.appendChild(nowtime);
+start(){
+this.dateStart = new Date();
+}
 
-//var score = document.createElement("p");
-//score.id = "id_score";
-//score.textContent = "score";
-//div.appendChild(score);
+update(){
+this.dateNow = new Date();
+}
 
-//var text = document.createElement("p");
-//text.id = "id_text";
-//text.textContent = "text";
-//div.appendChild(text);
+getPassedTime(){
+return (this.dateNow.getTime() - this.dateStart.getTime());
+}
+
+}
+var watch = new Watch();
+var InitialTime = 30;
+
+var score = 0;
 
 //--------------------------------
 
@@ -93,48 +93,25 @@ document.body.appendChild(app.view);
 var stage = app.stage.addChild(new PIXI.Graphics());
 var displayObject = new PIXI.DisplayObject;
 
-var textTime = new PIXI.Text('TIME',{fontFamily : 'Arial', fontSize: 24, fill : 0xff1010, align : 'center'});
+var textTime = new PIXI.Text('TIME',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'});
 textTime.x = app.screen.width/2;
 stage.addChild(textTime);
-var textScore = new PIXI.Text('SCORE',{fontFamily : 'Arial', fontSize: 24, fill : 0xff1010, align : 'center'});
+var textScore = new PIXI.Text('SCORE',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'});
 textScore.x = app.screen.width/4*3;
 stage.addChild(textScore);
 
-//イベントリスナー定義(キー入力、アップ・ダウン)
-window.addEventListener("keydown", (event) => {this.downHandler(event)}, false);
-window.addEventListener("keyup", (event) => {this.upHandler(event)}, false);
-
-//四角表示
-const square = new PIXI.Graphics();
-square.width = 100;
-square.height = 100;
-square.x = app.screen.width/2;
-square.y = app.screen.height/2;
-square.beginFill(0xff00ff);
-square.drawRect(0,0,100,100);
-square.endFill();
-app.stage.addChild(square);
-
 //テクスチャ
 var texture = [];
-texture[0] = PIXI.Texture.fromImage("numbers/0.png");
-texture[1] = PIXI.Texture.fromImage("numbers/1.png");
-texture[2] = PIXI.Texture.fromImage("numbers/2.png");
-texture[3] = PIXI.Texture.fromImage("numbers/3.png");
-texture[4] = PIXI.Texture.fromImage("numbers/4.png");
-texture[5] = PIXI.Texture.fromImage("numbers/5.png");
-texture[6] = PIXI.Texture.fromImage("numbers/6.png");
-texture[7] = PIXI.Texture.fromImage("numbers/7.png");
-texture[8] = PIXI.Texture.fromImage("numbers/8.png");
-texture[9] = PIXI.Texture.fromImage("numbers/9.png");
-var sprite = new PIXI.Sprite(texture[parseInt(Math.random() * 5)]);
-sprite.x = 100;
-sprite.y = 100;
-sprite.width  = 100;
-sprite.height = 100;
-sprite.interactive = true;//マウスイベント有効化
-sprite.on('click',clickObject);//クリックイベント
-app.stage.addChild(sprite);
+texture[0] = PIXI.Texture.from("numbers/0.png");
+texture[1] = PIXI.Texture.from("numbers/1.png");
+texture[2] = PIXI.Texture.from("numbers/2.png");
+texture[3] = PIXI.Texture.from("numbers/3.png");
+texture[4] = PIXI.Texture.from("numbers/4.png");
+texture[5] = PIXI.Texture.from("numbers/5.png");
+texture[6] = PIXI.Texture.from("numbers/6.png");
+texture[7] = PIXI.Texture.from("numbers/7.png");
+texture[8] = PIXI.Texture.from("numbers/8.png");
+texture[9] = PIXI.Texture.from("numbers/9.png");
 
 const classArray = [
 new GameObject(),
@@ -143,35 +120,17 @@ new GameObject(),
 new GameObject()
 ];
 
+
+watch.start();
+
+//関数ループ命令
+app.ticker.add(delta => this.gameloop(delta));
+
 //--------------------------------
 
 
 //function
 //--------------------------------
-
-//キーダウン
-function downHandler(event){
-switch(event.key){
-case 'ArrowRight': key.Right = 1; break;
-case 'ArrowLeft': key.Left = 1; break;
-case 'ArrowDown': key.Down = 1; break;
-case 'ArrowUp': key.Up = 1; break;
-}
-}
-//キーアップ
-function upHandler(event){
-switch(event.key){
-case 'ArrowRight': key.Right = 0; break;
-case 'ArrowLeft': key.Left = 0; break;
-case 'ArrowDown': key.Down = 0; break;
-case 'ArrowUp': key.Up = 0; break;
-}
-}
-
-function clickObject(){
-click++;
-sprite.texture = texture[click%10];
-}
 
 //--------------------------------
 
@@ -180,26 +139,27 @@ sprite.texture = texture[click%10];
 //--------------------------------
 
 function gameloop(delta){
-date = new Date();//update time
 
-if(key.Right){square.x += moveValue;}
-if(key.Left){square.x -= moveValue;}
-if(key.Down){square.y += moveValue;}
-if(key.Up){square.y -= moveValue;}
+var passedtime = parseInt(InitialTime - watch.getPassedTime()/1000);
 
-sprite.x = square.x;
-sprite.y = square.y;
+var string = new String("TIME : " + passedtime);
+textTime.x = app.screen.width/2 - string.length;
+textTime.text = "TIME : " + passedtime;
+textScore.text = "SCORE : " + score;
 
+if(passedtime > 0){
 
+watch.update();
 
-//ローカルマウス座標取得
-//const position = app.renderer.plugins.interaction.mouse.global;
-//const position = app.renderer.plugins.interaction.mouse.getLocalPosition(displayObject);
-//nowtime.innerHTML = position.x;
-//score.innerHTML = position.y;
-//text.innerHTML = app.screen.height/2;
-textTime.text = date.getSeconds();
-textScore.text = click;
+//date = new Date();//update time
+
+//if(key.Right){square.x += moveValue;}
+//if(key.Left){square.x -= moveValue;}
+//if(key.Down){square.y += moveValue;}
+//if(key.Up){square.y -= moveValue;}
+
+//sprite.x = square.x;
+//sprite.y = square.y;
 
 for(var i = 0; i < classArray.length; i++){
 if(classArray[i].kind == 0){
@@ -213,6 +173,15 @@ classArray[i].release();
 }
 }
 
+}
+
+else{
+
+for(var i = 0; i < classArray.length; i++){
+classArray[i].release();
+}
+
+}
 
 
 }
@@ -222,11 +191,6 @@ classArray[i].release();
 
 //others
 //--------------------------------
-
-//関数ループ命令
-app.ticker.add(delta => this.gameloop(delta));
-
-//document.body.appendChild(div);
 
 //--------------------------------
 
