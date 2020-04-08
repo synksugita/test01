@@ -67,27 +67,12 @@ const textScore = new PIXI.Text('SCORE',{fontFamily : 'Arial', fontSize: 24, fil
 textScore.x = app.screen.width/4*3;
 header.addChild(textScore);
 
-//テクスチャ
-let texture = [];
-texture[0] = PIXI.Texture.from("numbers/0.png");
-texture[1] = PIXI.Texture.from("numbers/1.png");
-texture[2] = PIXI.Texture.from("numbers/2.png");
-texture[3] = PIXI.Texture.from("numbers/3.png");
-texture[4] = PIXI.Texture.from("numbers/4.png");
-texture[5] = PIXI.Texture.from("numbers/5.png");
-texture[6] = PIXI.Texture.from("numbers/6.png");
-texture[7] = PIXI.Texture.from("numbers/7.png");
-texture[8] = PIXI.Texture.from("numbers/8.png");
-texture[9] = PIXI.Texture.from("numbers/9.png");
-
-const objectArray = new Array();
-
 
 //計測開始
 watch.start();
 
 //関数ループ命令
-app.ticker.add(delta => this.gameloop(delta));
+app.ticker.add(gameloop);
 
 //--------------------------------
 
@@ -97,11 +82,12 @@ app.ticker.add(delta => this.gameloop(delta));
 
 
 function createObject(){
-	
-	const sprite = new PIXI.Sprite();
-	sprite.kind = parseInt(Math.random() * 10 + 1);
+	const kind = parseInt(Math.random() * 10);
+	let texture = PIXI.Texture.from("numbers/" + kind + ".png");
+
+	const sprite = new PIXI.Sprite(texture);
+	sprite.kind = kind + 1;
 	sprite.moveValue = sprite.kind;
-	sprite.texture = texture[sprite.kind - 1];
 	sprite.width = 50;
 	sprite.height = 50;
 	sprite.x = Math.random() * (app.screen.width - sprite.width);
@@ -110,15 +96,12 @@ function createObject(){
 	sprite.on('mousedown',clickEvent);
 	
 	objectContainer.addChild(sprite);
-	objectArray.push(sprite);
 }
 function releaseObject(number){
-	const obj = objectArray.splice(number,1);
-	obj.texture = 0;
-	objectContainer.removeChild(obj);
+	objectContainer.removeChildAt(number);
 }
 function clickEvent(){
-	score += this.kind;
+	score += this.moveValue;
 	this.kind = 0;
 	this.texture = 0;
 }
@@ -129,7 +112,7 @@ function clickEvent(){
 //mainloop
 //--------------------------------
 
-function gameloop(delta){
+function gameloop(){
 
 	const passedtime = parseInt(InitialTime - watch.getPassedTime()/1000);
 
@@ -137,24 +120,37 @@ function gameloop(delta){
 	textScore.text = "SCORE : " + score;
 
 	if(passedtime > 0){
+
 		if(passedtime != timeOld){
 			createObject();
 		}
 		timeOld = passedtime;
 		watch.update();
-		for(let i = 0; i < objectArray.length; i++){
-			const obj = objectArray[i];
-			obj.y += obj.moveValue;
-			if(obj.y > app.screen.height){
+		for(let i = 0; i < objectContainer.children.length; i++){
+			const obj = objectContainer.children[i];
+			if(obj.y < app.screen.height){
+				obj.y += obj.moveValue;
+			}
+			else{
 				releaseObject(i);
+				i--;
+				continue;
 			}
 		}
 	}
 	else{
-		for(let i = 0; i < objectArray.length; i++){
+		textTime.text = "";
+		textScore.text = "SCORE : " + score;
+		textScore.x = app.screen.width/2;
+		textScore.y = app.screen.height/2;
+
+		for(let i = 0; i < objectContainer.children.length; i++){
 			releaseObject(i);
+			i--;
+			continue;
 		}
 	}
+
 }
 
 //--------------------------------
