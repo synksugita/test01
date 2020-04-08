@@ -1,42 +1,24 @@
 //definition
 //--------------------------------
 
-//キー
-class Key{
-	constructor(){
-		this.Right = 0;
-		this.Left = 0;
-		this.Down = 0;
-		this.Up = 0;
-	}
-}
-const key = new Key();
+var Watch = function(){
+	this.dateStart = new Date();
+	this.dateNow = new Date();
+};
+Watch.prototype.start = function(){
+	this.dateStart = new Date();
+};
+Watch.prototype.update = function(){
+	this.dateNow = new Date();
+};
+Watch.prototype.getPassedTime = function(){
+	return this.dateNow.getTime() - this.dateStart.getTime();
+};
+var watch = new Watch();
+var InitialTime = 30;
 
-class Watch{
-
-	constructor(){
-		this.dateStart = new Date();
-		this.dateNow = new Date();
-	}
-
-	start(){
-		this.dateStart = new Date();
-	}
-
-	update(){
-		this.dateNow = new Date();
-	}
-
-	getPassedTime(){
-		return (this.dateNow.getTime() - this.dateStart.getTime());
-	}
-
-}
-const watch = new Watch();
-const InitialTime = 30;
-
-let score = 0;
-let timeOld = InitialTime;
+var score = 0;
+var timeOld = InitialTime;
 
 //--------------------------------
 
@@ -45,25 +27,26 @@ let timeOld = InitialTime;
 //--------------------------------
 
 //アプリ初期化
-const app = new PIXI.Application({
+var app = new PIXI.Application({
 	width: 800,
 	height: 600,
 	backgroundColor: 0x000000,
 });
 document.body.appendChild(app.view);
-let stage = app.stage.addChild(new PIXI.Graphics());
+var stage = app.stage.addChild(new PIXI.Graphics());
 
 //オブジェクトコンテナ
-const objectContainer = new PIXI.Container();
+var objectContainer = new PIXI.Container();
 app.stage.addChild(objectContainer);
 
-const header = new PIXI.Container();
+var header = new PIXI.Container();
 app.stage.addChild(header);
 
-const textTime = new PIXI.Text('TIME',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'});
+var textTime = new PIXI.Text('TIME',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'});
 textTime.x = app.screen.width/2;
 header.addChild(textTime);
-const textScore = new PIXI.Text('SCORE',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'});
+
+var textScore = new PIXI.Text('SCORE',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'});
 textScore.x = app.screen.width/4*3;
 header.addChild(textScore);
 
@@ -82,16 +65,14 @@ app.ticker.add(gameloop);
 
 
 function createObject(){
-	const kind = parseInt(Math.random() * 10);
-	let texture = PIXI.Texture.from("numbers/" + kind + ".png");
-
-	const sprite = new PIXI.Sprite(texture);
+	var kind = parseInt(Math.random() * 10);
+	var sprite = new PIXI.Sprite(PIXI.Texture.from("numbers/" + kind + ".png"));
 	sprite.kind = kind + 1;
 	sprite.moveValue = sprite.kind;
 	sprite.width = 50;
 	sprite.height = 50;
 	sprite.x = Math.random() * (app.screen.width - sprite.width);
-	sprite.y = 0;// - sprite.height;
+	sprite.y = 0 - sprite.height;
 	sprite.interactive = true;
 	sprite.on('mousedown',clickEvent);
 	
@@ -126,14 +107,17 @@ function gameloop(){
 		}
 		timeOld = passedtime;
 		watch.update();
-		for(let i = 0; i < objectContainer.children.length; i++){
-			const obj = objectContainer.children[i];
+
+		//コンテナの中身をインデックス指定で１つずつ削除する場合、
+		//最後尾からアクセスして削除していけば
+		//問題なく動作すると思いました。
+		for(var i = objectContainer.children.length - 1; i >= 0; i--){
+			var obj = objectContainer.children[i];
 			if(obj.y < app.screen.height){
 				obj.y += obj.moveValue;
 			}
 			else{
 				releaseObject(i);
-				i--;
 				continue;
 			}
 		}
@@ -144,13 +128,9 @@ function gameloop(){
 		textScore.x = app.screen.width/2;
 		textScore.y = app.screen.height/2;
 
-		for(let i = 0; i < objectContainer.children.length; i++){
-			releaseObject(i);
-			i--;
-			continue;
-		}
+		objectContainer.removeChildren();
+		app.ticker.remove(gameloop);
 	}
-
 }
 
 //--------------------------------
