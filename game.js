@@ -93,7 +93,9 @@ function createObject(){
 	sprite.x = Math.random() * (app.view.width - sprite.width);
 	sprite.y = 0;// - sprite.height;
 	sprite.interactive = true;
-	sprite.on('mousedown',clickEvent).on('touchstart',clickEvent);
+
+	var _click = (window.ontouchstart === undefined)?'mousedown':'touchstart';
+	sprite.on(_click,clickEvent);
 
 	objectContainer.addChild(sprite);
 }
