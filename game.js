@@ -14,11 +14,96 @@ Watch.prototype.update = function(){
 Watch.prototype.getPassedTime = function(){
 	return this.dateNow.getTime() - this.dateStart.getTime();
 };
-var watch = new Watch();
-var InitialTime = 30;
 
-var score = 0;
-var timeOld = InitialTime;
+
+var Root = function(data){
+	Pixim.Container.call(this);
+	this.data = data;
+
+	this.InitialTime = 30;
+	this.timeOld = this.InitialTime;
+	this.score = 0;
+
+	this.objectContainer = new PIXI.Container();
+	this.addChild(this.objectContainer);
+	this.header = new PIXI.Container();
+	this.addChild(this.header);
+	this.watch = new Watch();
+
+	this.textTime = new PIXI.Text('TIME',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'});
+	this.textTime.x = app.view.width/2;
+	this.header.addChild(this.textTime);
+	this.textScore = new PIXI.Text('SCORE',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'});
+	this.textScore.x = app.view.width/4*3;
+	this.header.addChild(this.textScore);
+
+	this.start();
+}
+Root.prototype = new Pixim.Container();
+Root.prototype.start = function(){
+	this.watch.start();
+	this.task.on('anim',this.gameloop);
+}
+Root.prototype.createObject = function(){
+	var kind = parseInt(Math.random() * 10);
+	var sprite = new PIXI.Sprite(this.data.resources.images["number" + kind]);
+	sprite.kind = kind + 1;
+	sprite.moveValue = sprite.kind;
+	sprite.width = 50;
+	sprite.height = 50;
+	sprite.x = Math.random() * (app.view.width - sprite.width);
+	sprite.y = 0;// - sprite.height;
+	sprite.interactive = true;
+
+	var _click = (window.ontouchstart === undefined)?'mousedown':'touchstart';
+	sprite.on(_click,this.clickEvent);
+
+	this.objectContainer.addChild(sprite);
+}
+Root.prototype.releaseObject = function(number){
+	this.objectContainer.removeChildAt(number);
+}
+Root.prototype.clickEvent = function(){
+	this.parent.parent.score += this.moveValue;
+	this.texture = 0;
+	this.kind = 0;
+}
+Root.prototype.gameloop = function(){
+	var passedtime = parseInt(this.InitialTime - this.watch.getPassedTime()/1000);
+
+	this.textTime.text = "TIME : " + passedtime;
+	this.textScore.text = "SCORE : " + this.score;
+
+	if(passedtime > 0){
+
+		if(passedtime != this.timeOld){
+			this.createObject(this.data);
+		}
+		this.timeOld = passedtime;
+		this.watch.update();
+
+		//コンテナの中身をインデックス指定で１つずつ削除する場合、
+		//最後尾からアクセスして削除していけば
+		//問題なく動作すると思いました。
+		for(var i = this.objectContainer.children.length - 1; i >= 0; i--){
+			var obj = this.objectContainer.children[i];
+			if(obj.y >= app.view.height){
+				this.releaseObject(i);
+				continue;
+			}
+			obj.y += obj.moveValue;
+		}
+	}
+	else{
+		this.textTime.text = "";
+		this.textScore.text = "SCORE : " + this.score;
+		this.textScore.x = app.view.width/2;
+		this.textScore.y = app.view.height/2;
+
+		this.objectContainer.removeChildren();
+		this.task.off('anim',this.gameloop);
+	}
+}
 
 //--------------------------------
 
@@ -46,111 +131,11 @@ content.defineImages({
 	number9: 'numbers/9.png',
 });
 
-var data;
 content.defineLibraries({
-	root: class Root extends Pixim.Container{
-		constructor($){
-			super();
-			data = $;
-
-			this.addChild(objectContainer);
-			this.addChild(header);
-
-			watch.start();
-
-			this.task.on('anim',gameloop);
-		}
-	},
+	root: Root,
 });
 
-//オブジェクトコンテナ
-var objectContainer = new PIXI.Container();
-
-var header = new PIXI.Container();
-
-var textTime = new PIXI.Text('TIME',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'});
-textTime.x = app.view.width/2;
-header.addChild(textTime);
-
-var textScore = new PIXI.Text('SCORE',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'});
-textScore.x = app.view.width/4*3;
-header.addChild(textScore);
-
 //--------------------------------
-
-
-//function
-//--------------------------------
-
-
-function createObject(){
-	var kind = parseInt(Math.random() * 10);
-	var sprite = new PIXI.Sprite(data.resources.images["number" + kind]);
-	sprite.kind = kind + 1;
-	sprite.moveValue = sprite.kind;
-	sprite.width = 50;
-	sprite.height = 50;
-	sprite.x = Math.random() * (app.view.width - sprite.width);
-	sprite.y = 0;// - sprite.height;
-	sprite.interactive = true;
-
-	var _click = (window.ontouchstart === undefined)?'mousedown':'touchstart';
-	sprite.on(_click,clickEvent);
-
-	objectContainer.addChild(sprite);
-}
-function releaseObject(number){
-	objectContainer.removeChildAt(number);
-}
-function clickEvent(){
-	score += this.moveValue;
-	this.kind = 0;
-	this.texture = 0;
-}
-
-//--------------------------------
-
-
-//mainloop
-//--------------------------------
-
-function gameloop(){
-
-	var passedtime = parseInt(InitialTime - watch.getPassedTime()/1000);
-
-	textTime.text = "TIME : " + passedtime;
-	textScore.text = "SCORE : " + score;
-
-	if(passedtime > 0){
-
-		if(passedtime != timeOld){
-			createObject();
-		}
-		timeOld = passedtime;
-		watch.update();
-
-		//コンテナの中身をインデックス指定で１つずつ削除する場合、
-		//最後尾からアクセスして削除していけば
-		//問題なく動作すると思いました。
-		for(var i = objectContainer.children.length - 1; i >= 0; i--){
-			var obj = objectContainer.children[i];
-			if(obj.y >= app.view.height){
-				releaseObject(i);
-				continue;
-			}
-			obj.y += obj.moveValue;
-		}
-	}
-	else{
-		textTime.text = "";
-		textScore.text = "SCORE : " + score;
-		textScore.x = app.view.width/2;
-		textScore.y = app.view.height/2;
-
-		objectContainer.removeChildren();
-		this.task.off('anim',gameloop);
-	}
-}
 
 
 //Attach content to application and run application
@@ -158,5 +143,3 @@ app.attachAsync(new content())
 	.then(function(){
 		app.play();
 	});
-
-//--------------------------------
