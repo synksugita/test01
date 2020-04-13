@@ -1,34 +1,19 @@
 //definition
 //--------------------------------
 
-var Watch = function(){
-	this.dateStart = new Date();
-	this.dateNow = new Date();
-};
-Watch.prototype.start = function(){
-	this.dateStart = new Date();
-};
-Watch.prototype.update = function(){
-	this.dateNow = new Date();
-};
-Watch.prototype.getPassedTime = function(){
-	return this.dateNow.getTime() - this.dateStart.getTime();
-};
-
-
 var Root = function(data){
 	Pixim.Container.call(this);
 	this.data = data;
 
 	this.InitialTime = 30;
 	this.timeOld = this.InitialTime;
+	this.bufTime = 0;
 	this.score = 0;
 
 	this.objectContainer = new PIXI.Container();
 	this.addChild(this.objectContainer);
 	this.header = new PIXI.Container();
 	this.addChild(this.header);
-	this.watch = new Watch();
 
 	this.textTime = new PIXI.Text('TIME',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'});
 	this.textTime.x = app.view.width/2;
@@ -41,8 +26,7 @@ var Root = function(data){
 }
 Root.prototype = new Pixim.Container();
 Root.prototype.start = function(){
-	this.watch.start();
-	this.task.on('anim',this.gameloop);
+	this.task.on('anim',function(e){this.gameloop(e)});
 }
 Root.prototype.createObject = function(){
 	var kind = parseInt(Math.random() * 10);
@@ -55,7 +39,7 @@ Root.prototype.createObject = function(){
 	sprite.y = 0;// - sprite.height;
 	sprite.interactive = true;
 
-	var _click = (window.ontouchstart === undefined)?'mousedown':'touchstart';
+	var _click = 'pointerdown';
 	sprite.on(_click,this.clickEvent);
 
 	this.objectContainer.addChild(sprite);
@@ -68,8 +52,10 @@ Root.prototype.clickEvent = function(){
 	this.texture = 0;
 	this.kind = 0;
 }
-Root.prototype.gameloop = function(){
-	var passedtime = parseInt(this.InitialTime - this.watch.getPassedTime()/1000);
+Root.prototype.gameloop = function(e){
+	this.bufTime += e.delta;
+	var passedtime = parseInt(this.InitialTime - this.bufTime);
+	//var passedtime = parseInt(this.InitialTime - this.watch.getPassedTime()/1000);
 
 	this.textTime.text = "TIME : " + passedtime;
 	this.textScore.text = "SCORE : " + this.score;
@@ -80,14 +66,13 @@ Root.prototype.gameloop = function(){
 			this.createObject(this.data);
 		}
 		this.timeOld = passedtime;
-		this.watch.update();
 
 		//コンテナの中身をインデックス指定で１つずつ削除する場合、
 		//最後尾からアクセスして削除していけば
 		//問題なく動作すると思いました。
 		for(var i = this.objectContainer.children.length - 1; i >= 0; i--){
 			var obj = this.objectContainer.children[i];
-			if(obj.y >= app.view.height){
+			if(obj.y > app.view.height){
 				this.releaseObject(i);
 				continue;
 			}
@@ -101,7 +86,9 @@ Root.prototype.gameloop = function(){
 		this.textScore.y = app.view.height/2;
 
 		this.objectContainer.removeChildren();
-		this.task.off('anim',this.gameloop);
+		//this.task.off('anim',this.gameloop);
+		this.task.destroy();
+		console.log('end');
 	}
 }
 
