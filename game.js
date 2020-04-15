@@ -6,10 +6,6 @@ var ObjectContainer = function($){
 
 	this.data = $;
 
-	this.InitialTime = 30;//初期時間
-	this.timeOld = this.InitialTime;//前フレームの時間
-	this.bufTime = 0;//経過時間保存用
-
 	this.score = 0;//スコア
 }
 ObjectContainer.prototype = new Pixim.Container();
@@ -33,6 +29,7 @@ ObjectContainer.prototype.releaseObject = function(number){
 	this.removeChildAt(number);
 }
 ObjectContainer.prototype.clickEvent = function(){
+console.log(this.parent);
 	this.parent.score += this.moveValue;
 	this.kind = 0;
 	this.texture = 0;
@@ -56,6 +53,10 @@ Header.prototype = new Pixim.Container();
 var Root = function($){
 	Pixim.Container.call(this);
 
+	this.InitialTime = 30;//初期時間
+	this.timeOld = this.InitialTime;//前フレームの時間
+	this.bufTime = 0;//経過時間保存用
+
 	this.objectContainer = new $.lib.objectContainer($);
 	this.addChild(this.objectContainer);
 	this.header = new $.lib.header($);
@@ -65,16 +66,16 @@ var Root = function($){
 }
 Root.prototype = new Pixim.Container();
 Root.prototype.gameloop = function(e, $){
-	this.objectContainer.bufTime += e.delta / 60;
-	var passedtime = parseInt(this.objectContainer.InitialTime - this.objectContainer.bufTime);
+	this.bufTime += e.delta / 60;
+	var passedtime = parseInt(this.InitialTime - this.bufTime);
 
 	if(passedtime > 0){
 		//時間内処理
 
 		//1秒タイマー
-		if(passedtime != this.objectContainer.timeOld){
+		if(passedtime != this.timeOld){
 			this.objectContainer.createObject();
-			this.objectContainer.timeOld = passedtime;
+			this.timeOld = passedtime;
 		}
 
 		for(var i = this.objectContainer.children.length - 1; i >= 0; i--){
