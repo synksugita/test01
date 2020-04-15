@@ -5,7 +5,12 @@ var ObjectContainer = function($){
 	Pixim.Container.call(this);
 
 	this.data = $;
-	this.score = 0;
+
+	this.InitialTime = 30;//初期時間
+	this.timeOld = this.InitialTime;//前フレームの時間
+	this.bufTime = 0;//経過時間保存用
+
+	this.score = 0;//スコア
 }
 ObjectContainer.prototype = new Pixim.Container();
 ObjectContainer.prototype.createObject = function(){
@@ -36,15 +41,14 @@ ObjectContainer.prototype.clickEvent = function(){
 var Header = function($){
 	Pixim.Container.call(this);
 
-	this.InitialTime = 30;
-	this.timeOld = this.InitialTime;
-	this.bufTime = 0;
-
 	this.textTime = new PIXI.Text('TIME',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'});
 	this.textTime.x = $.width/2;
+	this.textTime.anchor.x = 0.5;
 	this.addChild(this.textTime);
+
 	this.textScore = new PIXI.Text('SCORE',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'});
 	this.textScore.x = $.width/4*3;
+	this.textScore.anchor.x = 0.5;
 	this.addChild(this.textScore);
 }
 Header.prototype = new Pixim.Container();
@@ -61,18 +65,17 @@ var Root = function($){
 }
 Root.prototype = new Pixim.Container();
 Root.prototype.gameloop = function(e, $){
-	this.header.bufTime += e.delta / 60;
-	var passedtime = parseInt(this.header.InitialTime - this.header.bufTime);
-
-	this.header.textTime.text = "TIME : " + passedtime;
-	this.header.textScore.text = "SCORE : " + this.objectContainer.score;
+	this.objectContainer.bufTime += e.delta / 60;
+	var passedtime = parseInt(this.objectContainer.InitialTime - this.objectContainer.bufTime);
 
 	if(passedtime > 0){
+		//時間内処理
 
-		if(passedtime != this.header.timeOld){
+		//1秒タイマー
+		if(passedtime != this.objectContainer.timeOld){
 			this.objectContainer.createObject();
+			this.objectContainer.timeOld = passedtime;
 		}
-		this.header.timeOld = passedtime;
 
 		for(var i = this.objectContainer.children.length - 1; i >= 0; i--){
 			var obj = this.objectContainer.children[i];
@@ -82,14 +85,20 @@ Root.prototype.gameloop = function(e, $){
 			}
 			obj.y += obj.moveValue;
 		}
+
+		this.header.textTime.text = "TIME : " + passedtime;
+		this.header.textScore.text = "SCORE : " + this.objectContainer.score;
 	}
 	else{
-		this.header.textTime.text = "";
+		//時間外処理
+
+		this.objectContainer.removeChildren();
+
+		this.header.textTime.text = "TIME IS UP";
 		this.header.textScore.text = "SCORE : " + this.objectContainer.score;
 		this.header.textScore.x = $.width/2;
 		this.header.textScore.y = $.height/2;
 
-		this.objectContainer.removeChildren();
 		this.task.clear('anim');
 		console.log('end');
 	}
