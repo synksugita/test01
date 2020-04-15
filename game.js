@@ -1,22 +1,22 @@
 //definition
 //--------------------------------
 
-var ObjectContainer = function(){
+var ObjectContainer = function($){
 	Pixim.Container.call(this);
 
-	this.data = 0;
+	this.data = $;
 	this.score = 0;
 }
 ObjectContainer.prototype = new Pixim.Container();
 ObjectContainer.prototype.createObject = function(){
 	var kind = parseInt(Math.random() * 10);
-	var sprite = new PIXI.Sprite(this.data.resources.images["number" + kind]);
+	var sprite = new PIXI.Sprite(this.data.resources.images['number' + kind]);
 	sprite.kind = kind + 1;
 	sprite.moveValue = sprite.kind;
 	sprite.width = 50;
 	sprite.height = 50;
-	sprite.x = Math.random() * (app.view.width - sprite.width);
-	sprite.y = 0;// - sprite.height;
+	sprite.x = Math.random() * (this.data.width - sprite.width);
+	sprite.y = 0 - sprite.height;
 	sprite.interactive = true;
 	sprite.parent = this;
 
@@ -33,7 +33,7 @@ ObjectContainer.prototype.clickEvent = function(){
 	this.texture = 0;
 }
 
-var Header = function(){
+var Header = function($){
 	Pixim.Container.call(this);
 
 	this.InitialTime = 30;
@@ -41,31 +41,26 @@ var Header = function(){
 	this.bufTime = 0;
 
 	this.textTime = new PIXI.Text('TIME',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'});
-	this.textTime.x = app.view.width/2;
+	this.textTime.x = $.width/2;
 	this.addChild(this.textTime);
 	this.textScore = new PIXI.Text('SCORE',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'});
-	this.textScore.x = app.view.width/4*3;
+	this.textScore.x = $.width/4*3;
 	this.addChild(this.textScore);
 }
 Header.prototype = new Pixim.Container();
 
-var Root = function(data){
+var Root = function($){
 	Pixim.Container.call(this);
 
-	this.objectContainer = new ObjectContainer();
+	this.objectContainer = new $.lib.objectContainer($);
 	this.addChild(this.objectContainer);
-	this.header = new Header();
+	this.header = new $.lib.header($);
 	this.addChild(this.header);
 
-	this.objectContainer.data = data;
-
-	this.start();
+	this.task.on('anim',function(e){this.gameloop(e, $)});
 }
 Root.prototype = new Pixim.Container();
-Root.prototype.start = function(){
-	this.task.on('anim',function(e){this.gameloop(e)});
-}
-Root.prototype.gameloop = function(e){
+Root.prototype.gameloop = function(e, $){
 	this.header.bufTime += e.delta / 60;
 	var passedtime = parseInt(this.header.InitialTime - this.header.bufTime);
 
@@ -81,7 +76,7 @@ Root.prototype.gameloop = function(e){
 
 		for(var i = this.objectContainer.children.length - 1; i >= 0; i--){
 			var obj = this.objectContainer.children[i];
-			if(obj.y > app.view.height){
+			if(obj.y > $.height){
 				this.objectContainer.releaseObject(i);
 				continue;
 			}
@@ -91,11 +86,11 @@ Root.prototype.gameloop = function(e){
 	else{
 		this.header.textTime.text = "";
 		this.header.textScore.text = "SCORE : " + this.objectContainer.score;
-		this.header.textScore.x = app.view.width/2;
-		this.header.textScore.y = app.view.height/2;
+		this.header.textScore.x = $.width/2;
+		this.header.textScore.y = $.height/2;
 
 		this.objectContainer.removeChildren();
-		this.task.destroy();
+		this.task.clear('anim');
 		console.log('end');
 	}
 }
@@ -106,12 +101,14 @@ Root.prototype.gameloop = function(e){
 //initialization
 //--------------------------------
 
-//Create application
-var app = new Pixim.Application({width:600,height:600});
-
 //Create content
 Pixim.Content.create('testgame');
 var content = Pixim.Content.get('testgame');
+
+content.setConfig({
+	width: 600,
+	height: 600
+});
 
 content.defineImages({
 	number0: 'numbers/0.png',
@@ -128,6 +125,15 @@ content.defineImages({
 
 content.defineLibraries({
 	root: Root,
+	objectContainer: ObjectContainer,
+	header: Header
+});
+
+
+//Create application
+var app = new Pixim.Application({
+	width: content._piximData.config.width,
+	height: content._piximData.config.height
 });
 
 //--------------------------------
