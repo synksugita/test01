@@ -23,10 +23,13 @@ ObjectContainer.prototype.update = function(deltaTime){
 	}
 
 	for(var i = this.children.length - 1; i >= 0; i--){
+		//オブジェクトを移動させる
+		this.moveObject(i, deltaTime);
+
+		//画面外まで行ったら消す
 		if(this.children[i].y > this.data.height){
 			this.releaseObject(i);
 		}
-		this.moveObject(i, deltaTime);
 	}
 }
 ObjectContainer.prototype.moveObject = function(number, deltaTime){
@@ -75,7 +78,7 @@ var Header = function($){
 	this.addChild(this.textScore);
 }
 Header.prototype = new Pixim.Container();
-Header.prototype.ingame = function(time, score){
+Header.prototype.ingame = function(time){
 	//時間表示
 	this.textTime.text = "TIME : " + time;
 	this.textTime.x = this.data.width / 2;
@@ -84,13 +87,13 @@ Header.prototype.ingame = function(time, score){
 	this.textTime.anchor.y = 0;
 
 	//得点表示
-	this.textScore.text = "SCORE : " + score;
+	this.textScore.text = "SCORE : " + this.parent.score;
 	this.textScore.x = this.data.width / 4 * 3;
 	this.textScore.y = 0;
 	this.textScore.anchor.x = 0.5;
 	this.textScore.anchor.y = 0;
 }
-Header.prototype.result = function(time, score){
+Header.prototype.result = function(time){
 	//時間表示
 	this.textTime.text = "TIME IS OUT";
 	this.textTime.x = this.data.width / 2;
@@ -99,7 +102,7 @@ Header.prototype.result = function(time, score){
 	this.textTime.anchor.y = 0;
 
 	//得点表示
-	this.textScore.text = "SCORE : " + score;
+	this.textScore.text = "SCORE : " + this.parent.score;
 	this.textScore.x = this.data.width / 2;
 	this.textScore.y = this.data.height / 2;
 	this.textScore.anchor.x = 0.5;
@@ -118,6 +121,7 @@ var Root = function($){
 	this.addChild(this.objectContainer);
 	this.header = new $.lib.header($);
 	this.addChild(this.header);
+console.log($);
 
 	this.task.on('anim',function(e){this.gameloop(e)});
 }
@@ -131,13 +135,13 @@ Root.prototype.gameloop = function(e){
 
 		this.objectContainer.update(e.delta);
 
-		this.header.ingame(passedtime, this.score);
+		this.header.ingame(passedtime);
 	}
 	else{
 		//時間外処理
 		this.objectContainer.end();
 
-		this.header.result(passedtime, this.score);
+		this.header.result(passedtime);
 
 		this.task.clear('anim');
 		console.log('end');
@@ -151,12 +155,13 @@ Root.prototype.gameloop = function(e){
 //--------------------------------
 
 //Create content
-Pixim.Content.create('testgame');
-var content = Pixim.Content.get('testgame');
+//Pixim.Content.create('testgame');
+//var content = Pixim.Content.get('testgame');
+var content = Pixim.Content.create();
 
 content.setConfig({
 	width: 600,
-	height: 600
+	height: 600,
 });
 
 content.defineImages({
@@ -187,7 +192,8 @@ var app = new Pixim.Application({
 
 //--------------------------------
 
-
+console.log(content._piximData);
+console.log(app);
 //Attach content to application and run application
 app.attachAsync(new content())
 	.then(function(){
