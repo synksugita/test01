@@ -6,9 +6,32 @@ var ObjectContainer = function($){
 
 	this.data = $;
 
-	this.score = 0;//スコア
+	//タイマー用変数
+	this.bufTime = 0;//時間差の記録用
 }
 ObjectContainer.prototype = new Pixim.Container();
+ObjectContainer.prototype.update = function(deltaTime){
+	this.bufTime += deltaTime;
+
+	//１秒タイマー
+	var FPS = 60;
+	if(this.bufTime >= FPS){
+		//オブジェクトを生成
+		this.createObject();
+		var num = this.bufTime / FPS;
+		this.bufTime -= num * FPS;
+	}
+
+	for(var i = this.children.length - 1; i >= 0; i--){
+		if(this.children[i].y > this.data.height){
+			this.releaseObject(i);
+		}
+		this.moveObject(i, deltaTime);
+	}
+}
+ObjectContainer.prototype.moveObject = function(number, deltaTime){
+	this.children[number].y += this.children[number].moveValue * deltaTime;
+}
 ObjectContainer.prototype.createObject = function(){
 	var kind = parseInt(Math.random() * 10);
 	var sprite = new PIXI.Sprite(this.data.resources.images['number' + kind]);
@@ -19,7 +42,6 @@ ObjectContainer.prototype.createObject = function(){
 	sprite.x = Math.random() * (this.data.width - sprite.width);
 	sprite.y = 0 - sprite.height;
 	sprite.interactive = true;
-	sprite.parent = this;
 
 	sprite.on('pointerdown',this.clickEvent);
 
@@ -28,9 +50,11 @@ ObjectContainer.prototype.createObject = function(){
 ObjectContainer.prototype.releaseObject = function(number){
 	this.removeChildAt(number);
 }
+ObjectContainer.prototype.end = function(){
+	this.removeChildren();
+}
 ObjectContainer.prototype.clickEvent = function(){
-console.log(this.parent);
-	this.parent.score += this.moveValue;
+	this.parent.parent.score += this.moveValue;
 	this.kind = 0;
 	this.texture = 0;
 }
@@ -38,8 +62,10 @@ console.log(this.parent);
 var Header = function($){
 	Pixim.Container.call(this);
 
+	this.data = $;
+
 	this.textTime = new PIXI.Text('TIME',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'});
-	this.textTime.x = $.width/2;
+	this.textTime.x = $.width / 2;
 	this.textTime.anchor.x = 0.5;
 	this.addChild(this.textTime);
 
@@ -49,56 +75,69 @@ var Header = function($){
 	this.addChild(this.textScore);
 }
 Header.prototype = new Pixim.Container();
+Header.prototype.ingame = function(time, score){
+	//時間表示
+	this.textTime.text = "TIME : " + time;
+	this.textTime.x = this.data.width / 2;
+	this.textTime.y = 0;
+	this.textTime.anchor.x = 0.5;
+	this.textTime.anchor.y = 0;
+
+	//得点表示
+	this.textScore.text = "SCORE : " + score;
+	this.textScore.x = this.data.width / 4 * 3;
+	this.textScore.y = 0;
+	this.textScore.anchor.x = 0.5;
+	this.textScore.anchor.y = 0;
+}
+Header.prototype.result = function(time, score){
+	//時間表示
+	this.textTime.text = "TIME IS OUT";
+	this.textTime.x = this.data.width / 2;
+	this.textTime.y = 0;
+	this.textTime.anchor.x = 0.5;
+	this.textTime.anchor.y = 0;
+
+	//得点表示
+	this.textScore.text = "SCORE : " + score;
+	this.textScore.x = this.data.width / 2;
+	this.textScore.y = this.data.height / 2;
+	this.textScore.anchor.x = 0.5;
+	this.textScore.anchor.y = 0.5;
+}
 
 var Root = function($){
 	Pixim.Container.call(this);
 
 	this.InitialTime = 30;//初期時間
-	this.timeOld = this.InitialTime;//前フレームの時間
 	this.bufTime = 0;//経過時間保存用
+
+	this.score = 0;//得点
 
 	this.objectContainer = new $.lib.objectContainer($);
 	this.addChild(this.objectContainer);
 	this.header = new $.lib.header($);
 	this.addChild(this.header);
 
-	this.task.on('anim',function(e){this.gameloop(e, $)});
+	this.task.on('anim',function(e){this.gameloop(e)});
 }
 Root.prototype = new Pixim.Container();
-Root.prototype.gameloop = function(e, $){
+Root.prototype.gameloop = function(e){
 	this.bufTime += e.delta / 60;
-	var passedtime = parseInt(this.InitialTime - this.bufTime);
+	var passedtime = parseInt(this.InitialTime - this.bufTime + 1);
 
 	if(passedtime > 0){
 		//時間内処理
 
-		//1秒タイマー
-		if(passedtime != this.timeOld){
-			this.objectContainer.createObject();
-			this.timeOld = passedtime;
-		}
+		this.objectContainer.update(e.delta);
 
-		for(var i = this.objectContainer.children.length - 1; i >= 0; i--){
-			var obj = this.objectContainer.children[i];
-			if(obj.y > $.height){
-				this.objectContainer.releaseObject(i);
-				continue;
-			}
-			obj.y += obj.moveValue;
-		}
-
-		this.header.textTime.text = "TIME : " + passedtime;
-		this.header.textScore.text = "SCORE : " + this.objectContainer.score;
+		this.header.ingame(passedtime, this.score);
 	}
 	else{
 		//時間外処理
+		this.objectContainer.end();
 
-		this.objectContainer.removeChildren();
-
-		this.header.textTime.text = "TIME IS UP";
-		this.header.textScore.text = "SCORE : " + this.objectContainer.score;
-		this.header.textScore.x = $.width/2;
-		this.header.textScore.y = $.height/2;
+		this.header.result(passedtime, this.score);
 
 		this.task.clear('anim');
 		console.log('end');
