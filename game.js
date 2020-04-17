@@ -1,6 +1,10 @@
 //definition
 //--------------------------------
 
+var Score = function(){
+	this.value;
+}
+
 var ObjectContainer = function($){
 	Pixim.Container.call(this);
 
@@ -46,7 +50,7 @@ ObjectContainer.prototype.createObject = function(){
 	sprite.y = 0 - sprite.height;
 	sprite.interactive = true;
 
-	sprite.on('pointerdown',this.clickEvent);
+	sprite.addListener('pointerdown',this.clickEvent);
 
 	this.addChild(sprite);
 }
@@ -121,7 +125,6 @@ var Root = function($){
 	this.addChild(this.objectContainer);
 	this.header = new $.lib.header($);
 	this.addChild(this.header);
-console.log($);
 
 	this.task.on('anim',function(e){this.gameloop(e)});
 }
@@ -180,7 +183,7 @@ content.defineImages({
 content.defineLibraries({
 	root: Root,
 	objectContainer: ObjectContainer,
-	header: Header
+	header: Header,
 });
 
 
@@ -192,8 +195,7 @@ var app = new Pixim.Application({
 
 //--------------------------------
 
-console.log(content._piximData);
-console.log(app);
+
 //Attach content to application and run application
 app.attachAsync(new content())
 	.then(function(){
