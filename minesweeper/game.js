@@ -47,8 +47,6 @@ var Board = function($){
 
 	this.$ = $;
 
-	//this.blockContainer = this.addChild(new Pixim.Container());
-
 	this.sizeX = 0;
 	this.sizeY = 0;
 }
