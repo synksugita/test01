@@ -20,8 +20,8 @@ var Block = function(X, Y, texture){
 
 	this.sprite = this.addChild(new PIXI.Sprite(texture));
 
-	this.sprite.width = 10;
-	this.sprite.height = 10;
+	this.sprite.width = 30;
+	this.sprite.height = 30;
 	this.sprite.x = X * this.sprite.width;
 	this.sprite.y = Y * this.sprite.height;
 
@@ -49,8 +49,6 @@ var Board = function($){
 
 	//this.blockContainer = this.addChild(new Pixim.Container());
 
-	this.x = 100;
-	this.y = 100;
 	this.sizeX = 0;
 	this.sizeY = 0;
 }
@@ -88,7 +86,7 @@ Board.prototype.putMines = function(nMine){
 		}
 		return;
 	}
-/*
+
 	//ランダムな位置に爆弾生成
 	var count = 0;
 	while(count < nMine){
@@ -96,28 +94,28 @@ Board.prototype.putMines = function(nMine){
 		var y = parseInt(Math.random() * this.sizeY);
 		var block = this.getBlock(x,y);
 		if(block === undefined){continue};
-		if(block.isMine = false){
+		if(block.isMine == false){
 			block.isMine = true;
 			count++;
 			//incliment around block`s number
 			for(var i = -1; i <= 1; i++){
 				for(var j = -1; j <= 1; j++){
 					if(i == 0 && j == 0){continue;}//me
-					block = getBlock(x+j, y+i);
+					block = this.getBlock(x+j, y+i);
 					if(block === undefined){continue;}
 					block.number++;
 				}
 			}
 		}
 	}
-*/
+
 }
 
 Board.prototype.openBlock = function(objBlock){
 	if(objBlock.isOpen == true || objBlock.isFlag == true){return;}
 	objBlock.isOpen = true;
 	if(objBlock.isMine == true){
-		objBlock.sprite.texture = this.$.resources.imgaes['number' + 9];
+		objBlock.sprite.texture = this.$.resources.images.block_mine;
 		this.emit('mine');
 		return;
 	}
