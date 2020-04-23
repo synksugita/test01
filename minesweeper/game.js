@@ -4,8 +4,11 @@ var Header = function($){
 	this.$ = $;
 
 	this.textTime = this.addChild(new PIXI.Text('TIME',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'}));
-	this.textTime.x = this.$.width/2;
-	this.textTime.anchor.x = 0.5;
+	this.textTime.x = 0;
+	this.textTime.anchor.x = 0;
+
+	this.textTouchMode = this.addChild(new PIXI.Text('MODE',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'}));
+	this.textTouchMode.x = this.$.width - 200;
 }
 
 Header.prototype = Object.create(Pixim.Container.prototype);
@@ -20,6 +23,32 @@ Header.prototype.viewResult = function(time, result){
 	else if(result > 0){message = 'GAME CLEAR';}
 	this.textTime.text = 'TIME : ' + time + ', ' + message;
 }
+
+Header.prototype.viewMode = function(mode){
+	var message;
+	if(mode == false){message = 'FLAG';}
+	else{message = 'OPEN';}
+
+	this.textTouchMode.text = 'MODE : ' + message;
+}
+
+
+var ModeChanger = function($, texture){
+	Pixim.Container.call(this);
+
+	this.sprite = this.addChild(new PIXI.Sprite(texture));
+	this.sprite.width = 50;
+	this.sprite.height = 50;
+	this.sprite.x = $.width - this.sprite.width;
+	this.sprite.y = 50;
+
+	this.on('pointerdown', function(){
+		this.emit('change');
+	});
+	this.interactive = true;
+}
+
+ModeChanger.prototype = Object.create(Pixim.Container.prototype);
 
 
 var Block = function(X, Y, texture){
@@ -59,13 +88,23 @@ var Board = function($){
 	this.sizeY = 0;
 
 	this.nMine = 0;
+
+	this.touchMode = true;
+
+	this.blockContainer = this.addChild(new Pixim.Container());
+
+	this.modeChanger = this.addChild(new ModeChanger(this.$, this.$.resources.images.block_closed));
+	var self = this;
+	this.modeChanger.on('change', function(){
+		self.changeMode();
+	});
 }
 
 Board.prototype = Object.create(Pixim.Container.prototype);
 
 Board.prototype.initialize = function(nMine){
 	//if(this.sizeX <= 0 && this.sizeY <= 0){return;}
-	if(this.children.length <= 0){return;}
+	if(this.blockContainer.children.length <= 0){return;}
 
 	this.clearBlocks();
 	this.putMines(nMine);
@@ -74,7 +113,7 @@ Board.prototype.initialize = function(nMine){
 Board.prototype.clearBlocks = function(){
 	var nBlock = this.sizeX * this.sizeY;
 	for(var i = 0; i < nBlock; i++){
-		var block = this.children[i];
+		var block = this.blockContainer.children[i];
 		block.isOpen = false;
 		block.isMine = false;
 		block.isFlag = false;
@@ -92,7 +131,7 @@ Board.prototype.putMines = function(nMine){
 	var nBlock = this.sizeX * this.sizeY;
 	if(nMine >= nBlock){
 		for(var i = 0; i < nBlock; i++){
-			this.children[i].isMine = true;
+			this.blockContainer.children[i].isMine = true;
 		}
 		return;
 	}
@@ -122,6 +161,10 @@ Board.prototype.putMines = function(nMine){
 }
 
 Board.prototype.openBlock = function(objBlock){
+	if(this.touchMode == false){
+		return this.setFlag(objBlock);
+	}
+
 	if(objBlock.isOpen == true || objBlock.isFlag == true){return;}
 	objBlock.isOpen = true;
 	if(objBlock.isMine == true){
@@ -145,6 +188,17 @@ Board.prototype.openBlock = function(objBlock){
 	}
 }
 
+Board.prototype.setFlag = function(objBlock){
+	if(objBlock.isFlag == true){
+		objBlock.isFlag = false;
+		objBlock.sprite.texture = this.$.resources.images.block_closed;
+	}
+	else{
+		objBlock.isFlag = true;
+		objBlock.sprite.texture = this.$.resources.images.block_flag;
+	}
+}
+
 Board.prototype.create = function(X,Y){
 	if(X < 0 || Y < 0){return;}
 
@@ -152,14 +206,14 @@ Board.prototype.create = function(X,Y){
 	this.sizeY = Y;
 
 	//生成済みなら消す
-	if(this.children.length > 0){
+	if(this.blockContainer.children.length > 0){
 		this.release();
 	}
 
 	for(var y = 0; y < this.sizeY; y++){
 		for(var x = 0; x < this.sizeX; x++){
 			//ブロック生成
-			var block = this.addChild(new Block(x, y, this.$.resources.images.block_closed));
+			var block = this.blockContainer.addChild(new Block(x, y, this.$.resources.images.block_closed));
 			var self = this;
 			block.on('open', function(block){
 				self.openBlock(block);
@@ -170,19 +224,19 @@ Board.prototype.create = function(X,Y){
 }
 
 Board.prototype.release = function(){
-	this.removeChildren();
+	this.blockContainer.removeChildren();
 }
 
 Board.prototype.getResult = function(){
 	var count = 0;
-	for(var i = 0; i < this.children.length; i++){
-		var block = this.children[i];
+	for(var i = 0; i < this.blockContainer.children.length; i++){
+		var block = this.blockContainer.children[i];
 		if(block.isOpen == true){
 			if(block.isMine == true){return -1;}//爆弾発見
 			else{count++;}//爆弾ではない
 		}
 	}
-	if((this.nMine + count) == this.children.length){
+	if((this.nMine + count) == this.blockContainer.children.length){
 		return 1;//クリア
 	}
 	return 0;
@@ -191,23 +245,35 @@ Board.prototype.getResult = function(){
 Board.prototype.end = function(){
 	//this.removeChildren();
 
-	for(var i = 0; i < this.children.length; i++){
-		var block = this.children[i];
+	for(var i = 0; i < this.blockContainer.children.length; i++){
+		var block = this.blockContainer.children[i];
 		block.interactive = false;
 	}
+	this.modeChanger.interactive = false;
+}
+
+Board.prototype.changeMode = function(){
+	if(this.touchMode == true){
+		this.touchMode = false;
+		this.modeChanger.sprite.texture = this.$.resources.images.block_flag;
+	}
+	else{
+		this.touchMode = true;
+		this.modeChanger.sprite.texture = this.$.resources.images.block_closed;
+	}
+	this.emit('changeMode', this.touchMode);
 }
 
 Board.prototype.getBlock = function(X,Y){
 	if(X < 0 || X >= this.sizeX || Y < 0 || Y >= this.sizeY){
 		return undefined;
 	}
-	else if(this.children.length <= 0){
+	else if(this.blockContainer.children.length <= 0){
 		return undefined;
 	}
 	else{
-		return this.children[this.sizeX * Y + X];
+		return this.blockContainer.children[this.sizeX * Y + X];
 	}
-
 }
 
 
@@ -223,9 +289,15 @@ var Root = function($){
 
 	this.board = this.addChild(new $.lib.board($));
 	var self = this;
-	this.board.on('mine', function(){self.isActive = false;});
+	this.board.on('mine', function(){
+		self.isActive = false;
+	});
+	this.board.on('changeMode', function(mode){
+		self.header.viewMode(mode);
+	});
 	this.board.create(10,10);
 	this.board.initialize(10);
+	this.header.viewMode(this.board.touchMode);
 
 	this.task.on('anim',function(e){this.gameloop(e)});
 }
@@ -284,6 +356,7 @@ content.defineImages({
 	block_opened: 'blocks/block_opened.png',
 	block_closed: 'blocks/block_closed.png',
 	block_mine: 'blocks/block_mine.png',
+	block_flag: 'blocks/block_flag.png',
 });
 
 content.defineLibraries({
