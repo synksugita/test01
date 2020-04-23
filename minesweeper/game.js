@@ -33,10 +33,30 @@ Header.prototype.viewMode = function(mode){
 }
 
 
-var ModeChanger = function($, texture){
+var BlockKind = {
+	number0: 0,
+	number1: 1,
+	number2: 2,
+	number3: 3,
+	number4: 4,
+	number5: 5,
+	number6: 6,
+	number7: 7,
+	number8: 8,
+	number9: 9,
+	block_opend: 10,
+	block_closed: 11,
+	block_mine: 12,
+	block_flag: 13,
+}
+
+
+var ModeChanger = function($){
 	Pixim.Container.call(this);
 
-	this.sprite = this.addChild(new PIXI.Sprite(texture));
+	this.$ = $;
+
+	this.sprite = this.addChild(new PIXI.Sprite($.resources.images.block_closed));
 	this.sprite.width = 50;
 	this.sprite.height = 50;
 	this.sprite.x = $.width - this.sprite.width;
@@ -50,11 +70,24 @@ var ModeChanger = function($, texture){
 
 ModeChanger.prototype = Object.create(Pixim.Container.prototype);
 
+ModeChanger.prototype.setTexture = function(mode){
+	var texture;
+	if(mode == false){
+		texture = this.$.resources.images.block_flag;
+	}
+	else{
+		texture = this.$.resources.images.block_closed;
+	}
+	this.sprite.texture = texture;
+}
 
-var Block = function(X, Y, texture){
+
+var Block = function($, X, Y){
 	Pixim.Container.call(this);
 
-	this.sprite = this.addChild(new PIXI.Sprite(texture));
+	this.$ = $;
+
+	this.sprite = this.addChild(new PIXI.Sprite($.resources.images.block_closed));
 
 	this.sprite.width = 30;
 	this.sprite.height = 30;
@@ -77,6 +110,42 @@ var Block = function(X, Y, texture){
 
 Block.prototype = Object.create(Pixim.Container.prototype);
 
+Block.prototype.setTexture = function(kind){
+	var texture;
+	switch(kind){
+		case BlockKind.number0:
+		case BlockKind.number1:
+		case BlockKind.number2:
+		case BlockKind.number3:
+		case BlockKind.number4:
+		case BlockKind.number5:
+		case BlockKind.number6:
+		case BlockKind.number7:
+		case BlockKind.number8:
+		case BlockKind.number9:{
+				texture = this.$.resources.images['number' + kind];
+				break;
+			}
+		case BlockKind.block_opened:{
+				texture = this.$.resources.images.block_opend;
+				break;
+			}
+		case BlockKind.block_closed:{
+				texture = this.$.resourcees.images.block_closed;
+				break;
+			}
+		case BlockKind.block_mine:{
+				texture = this.$.resources.images.block_mine;
+				break;
+			}
+		case BlockKind.block_flag:{
+				texture = this.$.resources.images.block_flag;
+				break;
+			}
+	}
+	this.sprite.texture = texture;
+}
+
 
 var Board = function($){
 	Pixim.Container.call(this);
@@ -92,8 +161,9 @@ var Board = function($){
 	this.touchMode = true;
 
 	this.blockContainer = this.addChild(new Pixim.Container());
+	this.blockArray = new Array();
 
-	this.modeChanger = this.addChild(new ModeChanger(this.$, this.$.resources.images.block_closed));
+	this.modeChanger = this.addChild(new ModeChanger(this.$));
 	var self = this;
 	this.modeChanger.on('change', function(){
 		self.changeMode();
@@ -104,7 +174,7 @@ Board.prototype = Object.create(Pixim.Container.prototype);
 
 Board.prototype.initialize = function(nMine){
 	//if(this.sizeX <= 0 && this.sizeY <= 0){return;}
-	if(this.blockContainer.children.length <= 0){return;}
+	if(this.blockArray.length <= 0){return;}
 
 	this.clearBlocks();
 	this.putMines(nMine);
@@ -113,7 +183,7 @@ Board.prototype.initialize = function(nMine){
 Board.prototype.clearBlocks = function(){
 	var nBlock = this.sizeX * this.sizeY;
 	for(var i = 0; i < nBlock; i++){
-		var block = this.blockContainer.children[i];
+		var block = this.blockArray[i];
 		block.isOpen = false;
 		block.isMine = false;
 		block.isFlag = false;
@@ -131,21 +201,26 @@ Board.prototype.putMines = function(nMine){
 	var nBlock = this.sizeX * this.sizeY;
 	if(nMine >= nBlock){
 		for(var i = 0; i < nBlock; i++){
-			this.blockContainer.children[i].isMine = true;
+			this.blockArray[i].isMine = true;
 		}
 		return;
 	}
 
 	//ランダムな位置に爆弾生成
-	var count = 0;
-	while(count < nMine){
-		var x = parseInt(Math.random() * this.sizeX);
-		var y = parseInt(Math.random() * this.sizeY);
-		var block = this.getBlock(x,y);
-		if(block === undefined){continue};
+	var numList = new Array();
+	for(var i = 0; i < nBlock; i++){
+		numList.push(i);
+	}
+	for(var n = 0; n < nMine; n++){
+		var num = numList.splice(parseInt(Math.random() * numList.length), 1);
+		//var num = numList[parseInt(Math.random() * numList.length)];
+		var block = this.blockArray[num];
+		var x = block.posX;
+		var y = block.posY;
+console.log(num);
 		if(block.isMine == false){
 			block.isMine = true;
-			count++;
+			//numList.splice(num, 1);
 			//incliment around block`s number
 			for(var i = -1; i <= 1; i++){
 				for(var j = -1; j <= 1; j++){
@@ -157,7 +232,7 @@ Board.prototype.putMines = function(nMine){
 			}
 		}
 	}
-
+console.log(numList);
 }
 
 Board.prototype.openBlock = function(objBlock){
@@ -168,11 +243,11 @@ Board.prototype.openBlock = function(objBlock){
 	if(objBlock.isOpen == true || objBlock.isFlag == true){return;}
 	objBlock.isOpen = true;
 	if(objBlock.isMine == true){
-		objBlock.sprite.texture = this.$.resources.images.block_mine;
+		objBlock.setTexture(BlockKind.block_mine);
 		this.emit('mine');
 		return;
 	}
-	objBlock.sprite.texture = this.$.resources.images['number' + objBlock.number];
+	objBlock.setTexture(objBlock.number);
 
 	//０番処理
 	if(objBlock.number == 0){
@@ -186,16 +261,17 @@ Board.prototype.openBlock = function(objBlock){
 			}
 		}
 	}
+	this.emit('result', this.getResult());
 }
 
 Board.prototype.setFlag = function(objBlock){
 	if(objBlock.isFlag == true){
 		objBlock.isFlag = false;
-		objBlock.sprite.texture = this.$.resources.images.block_closed;
+		objBlock.setTexture(BlockKind.block_closed);
 	}
 	else{
 		objBlock.isFlag = true;
-		objBlock.sprite.texture = this.$.resources.images.block_flag;
+		objBlock.setTexture(BlockKind.block_flag);
 	}
 }
 
@@ -206,18 +282,19 @@ Board.prototype.create = function(X,Y){
 	this.sizeY = Y;
 
 	//生成済みなら消す
-	if(this.blockContainer.children.length > 0){
+	if(this.blockArray.length > 0){
 		this.release();
 	}
 
 	for(var y = 0; y < this.sizeY; y++){
 		for(var x = 0; x < this.sizeX; x++){
 			//ブロック生成
-			var block = this.blockContainer.addChild(new Block(x, y, this.$.resources.images.block_closed));
+			var block = this.blockContainer.addChild(new Block(this.$, x, y));
 			var self = this;
 			block.on('open', function(block){
 				self.openBlock(block);
 			});
+			this.blockArray.push(block);
 		}
 	}
 
@@ -225,18 +302,19 @@ Board.prototype.create = function(X,Y){
 
 Board.prototype.release = function(){
 	this.blockContainer.removeChildren();
+	this.blockArray = [];
 }
 
 Board.prototype.getResult = function(){
 	var count = 0;
-	for(var i = 0; i < this.blockContainer.children.length; i++){
-		var block = this.blockContainer.children[i];
+	for(var i = 0; i < this.blockArray.length; i++){
+		var block = this.blockArray[i];
 		if(block.isOpen == true){
 			if(block.isMine == true){return -1;}//爆弾発見
 			else{count++;}//爆弾ではない
 		}
 	}
-	if((this.nMine + count) == this.blockContainer.children.length){
+	if((this.nMine + count) == this.blockArray.length){
 		return 1;//クリア
 	}
 	return 0;
@@ -245,8 +323,8 @@ Board.prototype.getResult = function(){
 Board.prototype.end = function(){
 	//this.removeChildren();
 
-	for(var i = 0; i < this.blockContainer.children.length; i++){
-		var block = this.blockContainer.children[i];
+	for(var i = 0; i < this.blockArray.length; i++){
+		var block = this.blockArray[i];
 		block.interactive = false;
 	}
 	this.modeChanger.interactive = false;
@@ -255,12 +333,11 @@ Board.prototype.end = function(){
 Board.prototype.changeMode = function(){
 	if(this.touchMode == true){
 		this.touchMode = false;
-		this.modeChanger.sprite.texture = this.$.resources.images.block_flag;
 	}
 	else{
 		this.touchMode = true;
-		this.modeChanger.sprite.texture = this.$.resources.images.block_closed;
 	}
+	this.modeChanger.setTexture(this.touchMode);
 	this.emit('changeMode', this.touchMode);
 }
 
@@ -268,11 +345,11 @@ Board.prototype.getBlock = function(X,Y){
 	if(X < 0 || X >= this.sizeX || Y < 0 || Y >= this.sizeY){
 		return undefined;
 	}
-	else if(this.blockContainer.children.length <= 0){
+	else if(this.blockArray.length <= 0){
 		return undefined;
 	}
 	else{
-		return this.blockContainer.children[this.sizeX * Y + X];
+		return this.blockArray[this.sizeX * Y + X];
 	}
 }
 
@@ -284,16 +361,22 @@ var Root = function($){
 	this.nowTime = 0;
 
 	this.isActive = true;//ゲーム進行フラグ
+	this.result = 0;
 
 	this.header = this.addChild(new $.lib.header($));
 
 	this.board = this.addChild(new $.lib.board($));
 	var self = this;
 	this.board.on('mine', function(){
+		self.result = -1;
 		self.isActive = false;
 	});
 	this.board.on('changeMode', function(mode){
 		self.header.viewMode(mode);
+	});
+	this.board.on('result', function(result){
+		self.result = result;
+		if(self.result != 0){self.isActive = false;}
 	});
 	this.board.create(10,10);
 	this.board.initialize(10);
@@ -314,17 +397,17 @@ Root.prototype.gameloop = function(e){
 
 		this.header.updateTime(this.nowTime);
 
-		if(this.board.getResult() != 0){
-			this.isActive = false;
-		}
+		//if(this.board.getResult() != 0){
+		//	this.isActive = false;
+		//}
 	}
 	else{
 		//ゲーム終了
 		this.board.end();
 
-		var result = this.board.getResult();
+		//var result = this.board.getResult();
 
-		this.header.viewResult(this.nowTime, result);
+		this.header.viewResult(this.nowTime, this.result);
 
 		this.task.clear('anim');
 	}
