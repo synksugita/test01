@@ -5,13 +5,20 @@ var Header = function($){
 
 	this.textTime = this.addChild(new PIXI.Text('TIME',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'}));
 	this.textTime.x = this.$.width/2;
-	this.textTime.y = 100;
+	this.textTime.anchor.x = 0.5;
 }
 
 Header.prototype = Object.create(Pixim.Container.prototype);
 
 Header.prototype.updateTime = function(time){
-	this.textTime.text = ('TIME : ' + time);
+	this.textTime.text = 'TIME : ' + time;
+}
+
+Header.prototype.viewResult = function(time, result){
+	var message;
+	if(result < 0){message = 'GAME OVER';}
+	else if(result > 0){message = 'GAME CLEAR';}
+	this.textTime.text = 'TIME : ' + time + ', ' + message;
 }
 
 
@@ -47,8 +54,11 @@ var Board = function($){
 
 	this.$ = $;
 
+	this.y = 50;
 	this.sizeX = 0;
 	this.sizeY = 0;
+
+	this.nMine = 0;
 }
 
 Board.prototype = Object.create(Pixim.Container.prototype);
@@ -75,6 +85,8 @@ Board.prototype.clearBlocks = function(){
 Board.prototype.putMines = function(nMine){
 	//爆弾無し
 	if(nMine <= 0){return}
+
+	this.nMine = nMine;
 
 	//全部爆弾
 	var nBlock = this.sizeX * this.sizeY;
@@ -161,6 +173,30 @@ Board.prototype.release = function(){
 	this.removeChildren();
 }
 
+Board.prototype.getResult = function(){
+	var count = 0;
+	for(var i = 0; i < this.children.length; i++){
+		var block = this.children[i];
+		if(block.isOpen == true){
+			if(block.isMine == true){return -1;}//爆弾発見
+			else{count++;}//爆弾ではない
+		}
+	}
+	if((this.nMine + count) == this.children.length){
+		return 1;//クリア
+	}
+	return 0;
+}
+
+Board.prototype.end = function(){
+	//this.removeChildren();
+
+	for(var i = 0; i < this.children.length; i++){
+		var block = this.children[i];
+		block.interactive = false;
+	}
+}
+
 Board.prototype.getBlock = function(X,Y){
 	if(X < 0 || X >= this.sizeX || Y < 0 || Y >= this.sizeY){
 		return undefined;
@@ -205,9 +241,19 @@ Root.prototype.gameloop = function(e){
 		}
 
 		this.header.updateTime(this.nowTime);
+
+		if(this.board.getResult() != 0){
+			this.isActive = false;
+		}
 	}
 	else{
 		//ゲーム終了
+		this.board.end();
+
+		var result = this.board.getResult();
+
+		this.header.viewResult(this.nowTime, result);
+
 		this.task.clear('anim');
 	}
 }
