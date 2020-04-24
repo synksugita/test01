@@ -1,3 +1,5 @@
+var FPS = 60;
+
 var Header = function($){
 	Pixim.Container.call(this);
 
@@ -70,7 +72,7 @@ var ModeChanger = function($){
 
 ModeChanger.prototype = Object.create(Pixim.Container.prototype);
 
-ModeChanger.prototype.selectTexture = function(mode){
+ModeChanger.prototype.tellSituation = function(mode){
 	var texture;
 	if(mode == false){
 		texture = this.$.resources.images.block_flag;
@@ -110,7 +112,7 @@ var Block = function($, X, Y){
 
 Block.prototype = Object.create(Pixim.Container.prototype);
 
-Block.prototype.selectTexture = function(kind){
+Block.prototype.tellSituation = function(kind){
 	var texture;
 	switch(kind){
 		case BlockKind.number0:
@@ -193,10 +195,10 @@ Board.prototype.clearBlocks = function(){
 }
 
 Board.prototype.putMines = function(nMine){
+	this.nMine = nMine;
+
 	//爆弾無し
 	if(nMine <= 0){return}
-
-	this.nMine = nMine;
 
 	//全部爆弾
 	var nBlock = this.sizeX * this.sizeY;
@@ -206,7 +208,9 @@ Board.prototype.putMines = function(nMine){
 				this.blockArray[y][x].isMine = true;
 			}
 		}
+		return;
 	}
+
 	//ランダムな位置に爆弾生成
 	var numList = new Array();
 	for(var i = 0; i < nBlock; i++){
@@ -234,21 +238,30 @@ Board.prototype.putMines = function(nMine){
 }
 
 Board.prototype.openBlock = function(objBlock){
+	//既に開いているなら操作しない
+	if(objBlock.isOpen == true){return;}
+
+	//フラッグモードの操作
 	if(this.touchMode == false){
 		return this.setFlag(objBlock);
 	}
 
-	if(objBlock.isOpen == true || objBlock.isFlag == true){return;}
+	//フラッグが立っているなら開かない
+	if(objBlock.isFlag == true){return;}
+
+	//開く
 	objBlock.isOpen = true;
+
+	//爆弾のとき
 	if(objBlock.isMine == true){
-		objBlock.selectTexture(BlockKind.block_mine);
+		objBlock.tellSituation(BlockKind.block_mine);
 		this.emit('mine');
 		return;
 	}
-	objBlock.selectTexture(objBlock.number);
 
-	//０番処理
+	//０番のとき
 	if(objBlock.number == 0){
+		objBlock.tellSituation(BlockKind.block_opened);
 		//周囲も開ける
 		for(var y = -1; y <= 1; y++){
 			for(var x = -1; x <= 1; x++){
@@ -260,6 +273,9 @@ Board.prototype.openBlock = function(objBlock){
 			}
 		}
 	}
+	else{
+		objBlock.tellSituation(objBlock.number);
+	}
 		
 	this.emit('result', this.getResult());
 }
@@ -267,11 +283,11 @@ Board.prototype.openBlock = function(objBlock){
 Board.prototype.setFlag = function(objBlock){
 	if(objBlock.isFlag == true){
 		objBlock.isFlag = false;
-		objBlock.selectTexture(BlockKind.block_closed);
+		objBlock.tellSituation(BlockKind.block_closed);
 	}
 	else{
 		objBlock.isFlag = true;
-		objBlock.selectTexture(BlockKind.block_flag);
+		objBlock.tellSituation(BlockKind.block_flag);
 	}
 }
 
@@ -343,7 +359,7 @@ Board.prototype.changeMode = function(){
 	else{
 		this.touchMode = true;
 	}
-	this.modeChanger.selectTexture(this.touchMode);
+	this.modeChanger.tellSituation(this.touchMode);
 	this.emit('changeMode', this.touchMode);
 }
 
@@ -392,13 +408,14 @@ var Root = function($){
 Root.prototype = Object.create(Pixim.Container.prototype);
 
 Root.prototype.gameloop = function(e){
-	if(this.isActive){
-		this.bufTime += e.delta;
+	this.bufTime += e.delta;
+
+	if(this.isActive == true){
 		//毎秒更新
-		if(this.bufTime >= 60){
+		if(this.bufTime >= FPS){
 			this.nowTime += 1;
 			this.header.updateTime(this.nowTime);
-			this.bufTime -= 60;
+			this.bufTime -= FPS;
 		}
 	}
 	else{
