@@ -1,41 +1,13 @@
 var FPS = 60;
 
-var Header = function($){
-	Pixim.Container.call(this);
-
-	this.$ = $;
-
-	this.textTime = this.addChild(new PIXI.Text('TIME',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'}));
-	this.textTime.x = 0;
-	this.textTime.anchor.x = 0;
-
-	this.textTouchMode = this.addChild(new PIXI.Text('MODE',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'}));
-	this.textTouchMode.x = this.$.width - 200;
+//操作モードの番号
+var KindTouchMode = {
+	open: 0,
+	flag: 1,
 }
 
-Header.prototype = Object.create(Pixim.Container.prototype);
-
-Header.prototype.updateTime = function(time){
-	this.textTime.text = 'TIME : ' + time;
-}
-
-Header.prototype.viewResult = function(time, result){
-	var message;
-	if(result < 0){message = 'GAME OVER';}
-	else if(result > 0){message = 'GAME CLEAR';}
-	this.textTime.text = 'TIME : ' + time + ', ' + message;
-}
-
-Header.prototype.viewMode = function(mode){
-	var message;
-	if(mode == false){message = 'FLAG';}
-	else{message = 'OPEN';}
-
-	this.textTouchMode.text = 'MODE : ' + message;
-}
-
-
-var BlockKind = {
+//ブロックのテクスチャ番号
+var KindBlock = {
 	number0: 0,
 	number1: 1,
 	number2: 2,
@@ -53,32 +25,108 @@ var BlockKind = {
 }
 
 
-var ModeChanger = function($){
+var Watch = function(){
+	Pixim.Container.call(this);
+
+	this.bufTime = 0;
+	this.passedTime = 0;
+}
+
+Watch.prototype = Object.create(Pixim.Container.prototype);
+
+Watch.prototype.start = function(){
+console.log('start');
+	this.task.on('anim', function(e){this.loop(e);});
+}
+
+Watch.prototype.end = function(){
+	this.task.clear('anim');
+}
+
+Watch.prototype.loop = function(e){
+	this.bufTime += e.delta;
+	if(this.bufTime >= FPS){
+		this.passedTime += 1;
+		this.emit('update', this.getPassedTime());
+		this.bufTime -= FPS;
+	}
+}
+
+Watch.prototype.getPassedTime = function(){
+	return this.passedTime;
+}
+
+
+var Header = function($){
 	Pixim.Container.call(this);
 
 	this.$ = $;
 
-	this.sprite = this.addChild(new PIXI.Sprite($.resources.images.block_closed));
+	this.textTime = this.addChild(new PIXI.Text('TIME',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'}));
+	this.textTime.x = 0;
+	this.textTime.anchor.x = 0;
+
+	this.textTouchMode = this.addChild(new PIXI.Text('MODE',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'}));
+	this.textTouchMode.x = this.$.width - 200;
+
+	this.textGameMessage = this.addChild(new PIXI.Text('MESSAGE',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'}));
+	this.textGameMessage.text = '';
+	this.textGameMessage.x = this.$.width/2;
+	this.textGameMessage.anchor.x = 0.5;
+}
+
+Header.prototype = Object.create(Pixim.Container.prototype);
+
+Header.prototype.updateTime = function(time){
+	this.textTime.text = 'TIME : ' + time;
+}
+
+Header.prototype.viewMessage = function(message){
+	this.textGameMessage.text = message;
+}
+
+Header.prototype.viewMode = function(mode){
+	var message;
+	switch(mode){
+		case KindTouchMode.open:{
+			message = 'OPEN';
+			break;
+		}
+		case KindTouchMode.flag:{
+			message = 'FLAG';
+			break;
+		}
+	}
+	this.textTouchMode.text = 'MODE : ' + message;
+}
+
+
+var ModeChanger = function($, touchMode){
+	Pixim.Container.call(this);
+
+	this.$ = $;
+
+	this.sprite = this.addChild(new PIXI.Sprite());
 	this.sprite.width = 50;
 	this.sprite.height = 50;
 	this.sprite.x = $.width - this.sprite.width;
 	this.sprite.y = 50;
 
+	this.tellKind(touchMode);
+
 	this.on('pointerdown', function(){
-		this.emit('change');
+		this.emit('selected');
 	});
 	this.interactive = true;
 }
 
 ModeChanger.prototype = Object.create(Pixim.Container.prototype);
 
-ModeChanger.prototype.tellSituation = function(mode){
+ModeChanger.prototype.tellKind = function(touchMode){
 	var texture;
-	if(mode == false){
-		texture = this.$.resources.images.block_flag;
-	}
-	else{
-		texture = this.$.resources.images.block_closed;
+	switch(touchMode){
+		case KindTouchMode.open:{texture = this.$.resources.images.block_opened; break;}
+		case KindTouchMode.flag:{texture = this.$.resources.images.block_flag;   break;}
 	}
 	this.sprite.texture = texture;
 }
@@ -105,45 +153,45 @@ var Block = function($, X, Y){
 	this.number = 0;
 
 	this.on('pointerdown', function(){
-		this.emit('open', this);
+		this.emit('selected', this);
 	});
 	this.interactive = true;
 }
 
 Block.prototype = Object.create(Pixim.Container.prototype);
 
-Block.prototype.tellSituation = function(kind){
+Block.prototype.tellKind = function(kind){
 	var texture;
 	switch(kind){
-		case BlockKind.number0:
-		case BlockKind.number1:
-		case BlockKind.number2:
-		case BlockKind.number3:
-		case BlockKind.number4:
-		case BlockKind.number5:
-		case BlockKind.number6:
-		case BlockKind.number7:
-		case BlockKind.number8:
-		case BlockKind.number9:{
-				texture = this.$.resources.images['number' + kind];
-				break;
-			}
-		case BlockKind.block_opened:{
-				texture = this.$.resources.images.block_opened;
-				break;
-			}
-		case BlockKind.block_closed:{
-				texture = this.$.resources.images.block_closed;
-				break;
-			}
-		case BlockKind.block_mine:{
-				texture = this.$.resources.images.block_mine;
-				break;
-			}
-		case BlockKind.block_flag:{
-				texture = this.$.resources.images.block_flag;
-				break;
-			}
+		case KindBlock.number0:
+		case KindBlock.number1:
+		case KindBlock.number2:
+		case KindBlock.number3:
+		case KindBlock.number4:
+		case KindBlock.number5:
+		case KindBlock.number6:
+		case KindBlock.number7:
+		case KindBlock.number8:
+		case KindBlock.number9:{
+			texture = this.$.resources.images['number' + kind];
+			break;
+		}
+		case KindBlock.block_opened:{
+			texture = this.$.resources.images.block_opened;
+			break;
+		}
+		case KindBlock.block_closed:{
+			texture = this.$.resources.images.block_closed;
+			break;
+		}
+		case KindBlock.block_mine:{
+			texture = this.$.resources.images.block_mine;
+			break;
+		}
+		case KindBlock.block_flag:{
+			texture = this.$.resources.images.block_flag;
+			break;
+		}
 	}
 	this.sprite.texture = texture;
 }
@@ -160,14 +208,14 @@ var Board = function($){
 
 	this.nMine = 0;
 
-	this.touchMode = true;
+	this.touchMode = KindTouchMode.open;
 
 	this.blockContainer = this.addChild(new Pixim.Container());
 	this.blockArray = new Array();
 
-	this.modeChanger = this.addChild(new ModeChanger(this.$));
+	this.modeChanger = this.addChild(new ModeChanger(this.$, this.touchMode));
 	var self = this;
-	this.modeChanger.on('change', function(){
+	this.modeChanger.on('selected', function(){
 		self.changeMode();
 	});
 }
@@ -237,31 +285,42 @@ Board.prototype.putMines = function(nMine){
 	}
 }
 
+Board.prototype.selectBlock = function(objBlock){
+	//開く
+	this.openBlock(objBlock);
+
+	var result = this.getResult();
+	if(result == 1){
+		this.emit('gameClear');
+	}
+	else if(result == -1){
+		this.emit('gameOver');
+	}
+}
+
 Board.prototype.openBlock = function(objBlock){
 	//既に開いているなら操作しない
 	if(objBlock.isOpen == true){return;}
 
 	//フラッグモードの操作
-	if(this.touchMode == false){
+	if(this.touchMode == KindTouchMode.flag){
 		return this.setFlag(objBlock);
 	}
 
 	//フラッグが立っているなら開かない
 	if(objBlock.isFlag == true){return;}
-
-	//開く
 	objBlock.isOpen = true;
 
 	//爆弾のとき
 	if(objBlock.isMine == true){
-		objBlock.tellSituation(BlockKind.block_mine);
-		this.emit('mine');
+		objBlock.tellKind(KindBlock.block_mine);
+		this.emit('gameOver');
 		return;
 	}
 
 	//０番のとき
 	if(objBlock.number == 0){
-		objBlock.tellSituation(BlockKind.block_opened);
+		objBlock.tellKind(KindBlock.block_opened);
 		//周囲も開ける
 		for(var y = -1; y <= 1; y++){
 			for(var x = -1; x <= 1; x++){
@@ -274,20 +333,18 @@ Board.prototype.openBlock = function(objBlock){
 		}
 	}
 	else{
-		objBlock.tellSituation(objBlock.number);
+		objBlock.tellKind(objBlock.number);
 	}
-		
-	this.emit('result', this.getResult());
 }
 
 Board.prototype.setFlag = function(objBlock){
 	if(objBlock.isFlag == true){
 		objBlock.isFlag = false;
-		objBlock.tellSituation(BlockKind.block_closed);
+		objBlock.tellKind(KindBlock.block_closed);
 	}
 	else{
 		objBlock.isFlag = true;
-		objBlock.tellSituation(BlockKind.block_flag);
+		objBlock.tellKind(KindBlock.block_flag);
 	}
 }
 
@@ -311,8 +368,8 @@ Board.prototype.create = function(X,Y){
 			//ブロック生成
 			var block = this.blockContainer.addChild(new Block(this.$, x, y));
 			var self = this;
-			block.on('open', function(block){
-				self.openBlock(block);
+			block.on('selected', function(block){
+				self.selectBlock(block);
 			});
 			this.blockArray[y].push(block);
 		}
@@ -353,14 +410,14 @@ Board.prototype.end = function(){
 }
 
 Board.prototype.changeMode = function(){
-	if(this.touchMode == true){
-		this.touchMode = false;
-	}
-	else{
-		this.touchMode = true;
-	}
-	this.modeChanger.tellSituation(this.touchMode);
+	var keys = Object.keys(KindTouchMode);
+	this.touchMode = (this.touchMode + 1) % keys.length;
+	this.modeChanger.tellKind(this.touchMode);
 	this.emit('changeMode', this.touchMode);
+}
+
+Board.prototype.getTouchMode = function(){
+	return this.touchMode;
 }
 
 Board.prototype.getBlock = function(X,Y){
@@ -375,59 +432,49 @@ Board.prototype.getBlock = function(X,Y){
 var Root = function($){
 	Pixim.Container.call(this);
 
-	this.bufTime = 0;
-	this.nowTime = 0;
+	var self = this;
 
-	this.isActive = true;//ゲーム進行フラグ
-	this.result = 0;
+	this.watch = this.addChild(new $.lib.watch());
+	this.watch.on('update', function(passedTime){
+		self.header.updateTime(passedTime);
+	});
 
 	this.header = this.addChild(new $.lib.header($));
 
 	this.board = this.addChild(new $.lib.board($));
-	var self = this;
-	this.board.on('mine', function(){
-		self.result = -1;
-		self.isActive = false;
-	});
 	this.board.on('changeMode', function(mode){
 		self.header.viewMode(mode);
 	});
-	this.board.on('result', function(result){
-		self.result = result;
-		if(self.result != 0){self.isActive = false;}
+	this.board.on('gameClear', function(){
+		self.resultGameClear();
+	});
+	this.board.on('gameOver', function(){
+		self.resultGameOver();
 	});
 	this.board.create(10,10);
 	this.board.initialize(10);
 
-	this.header.updateTime(this.nowTime);
-	this.header.viewMode(this.board.touchMode);
-
-	this.task.on('anim',function(e){this.gameloop(e)});
+	this.watch.start();
+	this.header.updateTime(this.watch.getPassedTime());
+	this.header.viewMode(this.board.getTouchMode());
 }
 
 Root.prototype = Object.create(Pixim.Container.prototype);
 
-Root.prototype.gameloop = function(e){
-	this.bufTime += e.delta;
-
-	if(this.isActive == true){
-		//毎秒更新
-		if(this.bufTime >= FPS){
-			this.nowTime += 1;
-			this.header.updateTime(this.nowTime);
-			this.bufTime -= FPS;
-		}
-	}
-	else{
-		//ゲーム終了
-		this.board.end();
-
-		this.header.viewResult(this.nowTime, this.result);
-
-		this.task.clear('anim');
-	}
+Root.prototype.end = function(time, message){
+	this.watch.end();
+	this.board.end();
+	this.header.updateTime(time);
+	this.header.viewMessage(message);
 }
 
+Root.prototype.resultGameClear = function(){
+	this.end(this.watch.getPassedTime(), 'GAME CLEAR');
+}
+
+Root.prototype.resultGameOver = function(){
+	this.end(this.watch.getPassedTime(), 'GAME OVER');
+}
 
 
 //Create content
@@ -461,6 +508,7 @@ content.defineLibraries({
 	root: Root,
 	header: Header,
 	board: Board,
+	watch: Watch,
 });
 
 
