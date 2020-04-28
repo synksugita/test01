@@ -35,7 +35,6 @@ var Watch = function(){
 Watch.prototype = Object.create(Pixim.Container.prototype);
 
 Watch.prototype.start = function(){
-console.log('start');
 	this.task.on('anim', function(e){this.loop(e);});
 }
 
@@ -44,12 +43,16 @@ Watch.prototype.end = function(){
 }
 
 Watch.prototype.loop = function(e){
+	this.passedTime += e.delta / FPS;//秒単位に直して加算
+	this.emit('update', this.getPassedTime());
+/*
 	this.bufTime += e.delta;
 	if(this.bufTime >= FPS){
 		this.passedTime += 1;
 		this.emit('update', this.getPassedTime());
 		this.bufTime -= FPS;
 	}
+*/
 }
 
 Watch.prototype.getPassedTime = function(){
@@ -77,7 +80,8 @@ var Header = function($){
 
 Header.prototype = Object.create(Pixim.Container.prototype);
 
-Header.prototype.updateTime = function(time){
+Header.prototype.updateTime = function(timeSecond){
+	var time = parseInt(timeSecond);//小数点以下切り捨て
 	this.textTime.text = 'TIME : ' + time;
 }
 
@@ -128,6 +132,10 @@ ModeChanger.prototype.tellKind = function(touchMode){
 		case KindTouchMode.open:{texture = this.$.resources.images.block_opened; break;}
 		case KindTouchMode.flag:{texture = this.$.resources.images.block_flag;   break;}
 	}
+	this.sprite.texture = texture;
+}
+
+ModeChanger.prototype.setTexture = function(texture){
 	this.sprite.texture = texture;
 }
 
@@ -196,6 +204,17 @@ Block.prototype.tellKind = function(kind){
 	this.sprite.texture = texture;
 }
 
+Block.prototype.changeFlag = function(){
+	if(this.isFlag == true){
+		this.isFlag = false;
+		this.tellKind(KindBlock.block_closed);
+	}
+	else{
+		this.isFlag = true;
+		this.tellKind(KindBlock.block_flag);
+	}
+}
+
 
 var Board = function($){
 	Pixim.Container.call(this);
@@ -207,6 +226,7 @@ var Board = function($){
 	this.sizeY = 0;
 
 	this.nMine = 0;
+	this.countOpen = 0;
 
 	this.touchMode = KindTouchMode.open;
 
@@ -226,6 +246,7 @@ Board.prototype.initialize = function(nMine){
 	//if(this.sizeX <= 0 && this.sizeY <= 0){return;}
 	if(this.blockArray.length <= 0){return;}
 
+	this.countOpen = 0;
 	this.clearBlocks();
 	this.putMines(nMine);
 }
@@ -289,6 +310,12 @@ Board.prototype.selectBlock = function(objBlock){
 	//開く
 	this.openBlock(objBlock);
 
+console.log(this.countOpen);
+	var nBlock = this.sizeX * this.sizeY;
+	if(this.countOpen == (nBlock - this.nMine)){
+		this.emit('gameClear');
+	}
+/*
 	var result = this.getResult();
 	if(result == 1){
 		this.emit('gameClear');
@@ -296,6 +323,7 @@ Board.prototype.selectBlock = function(objBlock){
 	else if(result == -1){
 		this.emit('gameOver');
 	}
+*/
 }
 
 Board.prototype.openBlock = function(objBlock){
@@ -309,7 +337,9 @@ Board.prototype.openBlock = function(objBlock){
 
 	//フラッグが立っているなら開かない
 	if(objBlock.isFlag == true){return;}
+
 	objBlock.isOpen = true;
+	this.countOpen++;
 
 	//爆弾のとき
 	if(objBlock.isMine == true){
@@ -338,6 +368,8 @@ Board.prototype.openBlock = function(objBlock){
 }
 
 Board.prototype.setFlag = function(objBlock){
+	objBlock.changeFlag();
+/*
 	if(objBlock.isFlag == true){
 		objBlock.isFlag = false;
 		objBlock.tellKind(KindBlock.block_closed);
@@ -346,6 +378,7 @@ Board.prototype.setFlag = function(objBlock){
 		objBlock.isFlag = true;
 		objBlock.tellKind(KindBlock.block_flag);
 	}
+*/
 }
 
 Board.prototype.create = function(X,Y){
@@ -380,7 +413,7 @@ Board.prototype.release = function(){
 	this.blockContainer.removeChildren();
 	this.blockArray = [];
 }
-
+/*
 Board.prototype.getResult = function(){
 	var count = 0;
 	for(var y = 0; y < this.sizeY; y++){
@@ -397,9 +430,12 @@ Board.prototype.getResult = function(){
 	}
 	return 0;
 }
-
+*/
 Board.prototype.end = function(){
 	//this.removeChildren();
+
+	this.interactiveChildren = false;
+/*
 	for(var y = 0; y < this.sizeY; y++){
 		for(var x = 0; x < this.sizeX; x++){
 			var block = this.blockArray[y][x];
@@ -407,12 +443,31 @@ Board.prototype.end = function(){
 		}
 	}
 	this.modeChanger.interactive = false;
+*/
 }
 
 Board.prototype.changeMode = function(){
+	//操作モードチェンジ
 	var keys = Object.keys(KindTouchMode);
 	this.touchMode = (this.touchMode + 1) % keys.length;
+
+	//テクスチャ指定
+	var texture;
+	switch(this.touchMode){
+		case KindTouchMode.open:{
+			texture = this.$.resources.images.block_opened;
+			break;
+		}
+		case KindTouchMode.flag:{
+			texture = this.$.resources.images.block_flag;
+			break;
+		}
+	}
+	this.modeChanger.setTexture(texture);
+/*
 	this.modeChanger.tellKind(this.touchMode);
+*/
+	//文字表示切替
 	this.emit('changeMode', this.touchMode);
 }
 
