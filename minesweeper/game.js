@@ -35,6 +35,7 @@ var Watch = function(){
 Watch.prototype = Object.create(Pixim.Container.prototype);
 
 Watch.prototype.start = function(){
+	this.passedTime = 0;
 	this.task.on('anim', function(e){this.loop(e);});
 }
 
@@ -44,7 +45,7 @@ Watch.prototype.end = function(){
 
 Watch.prototype.loop = function(e){
 	this.passedTime += e.delta / FPS;//秒単位に直して加算
-	this.emit('update', this.getPassedTime());
+	this.emit('update', this.passedTime);
 /*
 	this.bufTime += e.delta;
 	if(this.bufTime >= FPS){
@@ -54,11 +55,11 @@ Watch.prototype.loop = function(e){
 	}
 */
 }
-
+/*
 Watch.prototype.getPassedTime = function(){
 	return this.passedTime;
 }
-
+*/
 
 var Header = function($){
 	Pixim.Container.call(this);
@@ -90,18 +91,7 @@ Header.prototype.viewMessage = function(message){
 }
 
 Header.prototype.viewMode = function(mode){
-	var message;
-	switch(mode){
-		case KindTouchMode.open:{
-			message = 'OPEN';
-			break;
-		}
-		case KindTouchMode.flag:{
-			message = 'FLAG';
-			break;
-		}
-	}
-	this.textTouchMode.text = 'MODE : ' + message;
+	this.textTouchMode.text = 'MODE : ' + mode;
 }
 
 
@@ -170,6 +160,9 @@ Block.prototype = Object.create(Pixim.Container.prototype);
 
 Block.prototype.tellKind = function(kind){
 	var texture;
+	var keys = Object.keys(KindBlock);
+	texture = this.$.resources.images[keys[kind]];
+/*
 	switch(kind){
 		case KindBlock.number0:
 		case KindBlock.number1:
@@ -201,6 +194,7 @@ Block.prototype.tellKind = function(kind){
 			break;
 		}
 	}
+*/
 	this.sprite.texture = texture;
 }
 
@@ -307,10 +301,14 @@ Board.prototype.putMines = function(nMine){
 }
 
 Board.prototype.selectBlock = function(objBlock){
+	//フラッグモードの操作
+	if(this.touchMode == KindTouchMode.flag){
+		return this.setFlag(objBlock);
+	}
+
 	//開く
 	this.openBlock(objBlock);
 
-console.log(this.countOpen);
 	var nBlock = this.sizeX * this.sizeY;
 	if(this.countOpen == (nBlock - this.nMine)){
 		this.emit('gameClear');
@@ -329,11 +327,6 @@ console.log(this.countOpen);
 Board.prototype.openBlock = function(objBlock){
 	//既に開いているなら操作しない
 	if(objBlock.isOpen == true){return;}
-
-	//フラッグモードの操作
-	if(this.touchMode == KindTouchMode.flag){
-		return this.setFlag(objBlock);
-	}
 
 	//フラッグが立っているなら開かない
 	if(objBlock.isFlag == true){return;}
@@ -382,6 +375,8 @@ Board.prototype.setFlag = function(objBlock){
 }
 
 Board.prototype.create = function(X,Y){
+	X = parseInt(X);
+	Y = parseInt(Y);
 	if(X < 0 || Y < 0){return;}
 
 	this.sizeX = X;
@@ -476,6 +471,8 @@ Board.prototype.getTouchMode = function(){
 }
 
 Board.prototype.getBlock = function(X,Y){
+	X = parseInt(X);
+	Y = parseInt(Y);
 	if(X < 0 || X >= this.sizeX || Y < 0 || Y >= this.sizeY){
 		return undefined;
 	}
@@ -498,7 +495,22 @@ var Root = function($){
 
 	this.board = this.addChild(new $.lib.board($));
 	this.board.on('changeMode', function(mode){
-		self.header.viewMode(mode);
+		var message;
+		var keys = Object.keys(KindTouchMode);
+		message = keys[mode].toUpperCase();
+/*
+		switch(mode){
+			case KindTouchMode.open:{
+				message = 'OPEN';
+				break;
+			}
+			case KindTouchMode.flag:{
+				message = 'FLAG';
+				break;
+			}
+		}
+*/
+		self.header.viewMode(message);
 	});
 	this.board.on('gameClear', function(){
 		self.resultGameClear();
@@ -510,25 +522,25 @@ var Root = function($){
 	this.board.initialize(10);
 
 	this.watch.start();
-	this.header.updateTime(this.watch.getPassedTime());
-	this.header.viewMode(this.board.getTouchMode());
+	this.header.updateTime(this.watch.passedTime);
+	this.header.viewMode('OPEN');
 }
 
 Root.prototype = Object.create(Pixim.Container.prototype);
 
-Root.prototype.end = function(time, message){
+Root.prototype.end = function(message){
 	this.watch.end();
 	this.board.end();
-	this.header.updateTime(time);
+	this.header.updateTime(this.watch.passedTime);
 	this.header.viewMessage(message);
 }
 
 Root.prototype.resultGameClear = function(){
-	this.end(this.watch.getPassedTime(), 'GAME CLEAR');
+	this.end('GAME CLEAR');
 }
 
 Root.prototype.resultGameOver = function(){
-	this.end(this.watch.getPassedTime(), 'GAME OVER');
+	this.end('GAME OVER');
 }
 
 
