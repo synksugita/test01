@@ -198,7 +198,32 @@ Block.prototype.tellKind = function(kind){
 	this.sprite.texture = texture;
 }
 
+Block.prototype.open = function(){
+	//フラッグが立っているなら何もしない
+	if(this.isFlag == true){
+		return this.emit('openResult', this, KindBlock.block_flag);
+	}
+	//既に開いているなら何もしない
+	if(this.isOpen == true){
+		return this.emit('openResult', this, KindBlock.block_opened);
+	}
+
+	//開く
+	this.isOpen = true;
+
+	//爆弾だった
+	if(this.isMine == true){
+		this.tellKind(KindBlock.block_mine);
+		return this.emit('openResult', this, KindBlock.block_mine);
+	}
+	//数字だった
+	this.tellKind(this.number);
+	this.emit('openResult', this, this.number);
+}
+
 Block.prototype.changeFlag = function(){
+	if(this.isOpen == true){return;}
+
 	if(this.isFlag == true){
 		this.isFlag = false;
 		this.tellKind(KindBlock.block_closed);
@@ -303,27 +328,57 @@ Board.prototype.putMines = function(nMine){
 Board.prototype.selectBlock = function(objBlock){
 	//フラッグモードの操作
 	if(this.touchMode == KindTouchMode.flag){
-		return this.setFlag(objBlock);
+		objBlock.changeFlag();
+		return;
 	}
 
 	//開く
-	this.openBlock(objBlock);
+	//this.openBlock(objBlock);
+	objBlock.open();
+}
 
+Board.prototype.openResult = function(objBlock, kind){
+	//何もしない
+	if(kind == KindBlock.block_opened){
+		return;
+	}
+	if(kind == KindBlock.block_flag){
+		return;
+	}
+
+	//開いた
+	this.countOpen++;
+
+	//爆弾
+	if(kind == KindBlock.block_mine){
+		this.emit('gameOver');
+		return;
+	}
+
+	//０番
+	if(kind == KindBlock.number0){
+		this.openZero(objBlock);
+	}
+
+	//クリアチェック
 	var nBlock = this.sizeX * this.sizeY;
 	if(this.countOpen == (nBlock - this.nMine)){
 		this.emit('gameClear');
+		return;
 	}
-/*
-	var result = this.getResult();
-	if(result == 1){
-		this.emit('gameClear');
-	}
-	else if(result == -1){
-		this.emit('gameOver');
-	}
-*/
 }
 
+Board.prototype.openZero = function(objBlock){
+	for(var y = -1; y <= 1; y++){
+		for(var x = -1; x <= 1; x++){
+			if(x == 0 && y == 0){continue;}
+			var block = this.getBlock(objBlock.posX + x, objBlock.posY + y);
+			if(block === undefined){continue;}
+			block.open();
+		}
+	}
+}
+/*
 Board.prototype.openBlock = function(objBlock){
 	//既に開いているなら操作しない
 	if(objBlock.isOpen == true){return;}
@@ -359,7 +414,8 @@ Board.prototype.openBlock = function(objBlock){
 		objBlock.tellKind(objBlock.number);
 	}
 }
-
+*/
+/*
 Board.prototype.setFlag = function(objBlock){
 	objBlock.changeFlag();
 /*
@@ -373,7 +429,7 @@ Board.prototype.setFlag = function(objBlock){
 	}
 */
 }
-
+*/
 Board.prototype.create = function(X,Y){
 	X = parseInt(X);
 	Y = parseInt(Y);
@@ -398,6 +454,9 @@ Board.prototype.create = function(X,Y){
 			var self = this;
 			block.on('selected', function(block){
 				self.selectBlock(block);
+			});
+			block.on('openResult', function(block, kind){
+				self.openResult(block,kind);
 			});
 			this.blockArray[y].push(block);
 		}
