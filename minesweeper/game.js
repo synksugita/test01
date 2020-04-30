@@ -378,58 +378,7 @@ Board.prototype.openZero = function(objBlock){
 		}
 	}
 }
-/*
-Board.prototype.openBlock = function(objBlock){
-	//既に開いているなら操作しない
-	if(objBlock.isOpen == true){return;}
 
-	//フラッグが立っているなら開かない
-	if(objBlock.isFlag == true){return;}
-
-	objBlock.isOpen = true;
-	this.countOpen++;
-
-	//爆弾のとき
-	if(objBlock.isMine == true){
-		objBlock.tellKind(KindBlock.block_mine);
-		this.emit('gameOver');
-		return;
-	}
-
-	//０番のとき
-	if(objBlock.number == 0){
-		objBlock.tellKind(KindBlock.block_opened);
-		//周囲も開ける
-		for(var y = -1; y <= 1; y++){
-			for(var x = -1; x <= 1; x++){
-				if(x == 0 && y == 0){continue;}//me
-				//var block = this.blockArray[objBlock.posY + y][objBlock.posX + x];
-				var block = this.getBlock(objBlock.posX + x, objBlock.posY + y);
-				if(block === undefined){continue;}
-				this.openBlock(block);
-			}
-		}
-	}
-	else{
-		objBlock.tellKind(objBlock.number);
-	}
-}
-*/
-/*
-Board.prototype.setFlag = function(objBlock){
-	objBlock.changeFlag();
-/*
-	if(objBlock.isFlag == true){
-		objBlock.isFlag = false;
-		objBlock.tellKind(KindBlock.block_closed);
-	}
-	else{
-		objBlock.isFlag = true;
-		objBlock.tellKind(KindBlock.block_flag);
-	}
-*/
-}
-*/
 Board.prototype.create = function(X,Y){
 	X = parseInt(X);
 	Y = parseInt(Y);
