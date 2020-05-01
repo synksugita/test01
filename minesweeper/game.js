@@ -197,7 +197,7 @@ Block.prototype.tellKind = function(kind){
 */
 	this.sprite.texture = texture;
 }
-
+/*
 Block.prototype.open = function(){
 	//フラッグが立っているなら何もしない
 	if(this.isFlag == true){
@@ -233,7 +233,7 @@ Block.prototype.changeFlag = function(){
 		this.tellKind(KindBlock.block_flag);
 	}
 }
-
+*/
 
 var Board = function($){
 	Pixim.Container.call(this);
@@ -324,19 +324,83 @@ Board.prototype.putMines = function(nMine){
 		}
 	}
 }
-
+//ブロックがタップされたとき
 Board.prototype.selectBlock = function(objBlock){
 	//フラッグモードの操作
 	if(this.touchMode == KindTouchMode.flag){
-		objBlock.changeFlag();
+		this.changeFlag(objBlock);
 		return;
 	}
 
-	//開く
-	//this.openBlock(objBlock);
-	objBlock.open();
+	if(objBlock.isOpen == true){return;}
+	if(objBlock.isFlag == true){return;}
+
+	objBlock.isOpen = true;
+	this.countOpen += 1;
+
+	//爆弾チェック
+	if(objBlock.isMine == true){
+		objBlock.tellKind(KindBlock.block_mine);
+		this.emit('gameOver');
+		return;
+	}
+
+	if(objBlock.number == 0){
+		objBlock.tellKind(KindBlock.block_opened);
+		this.openAround(objBlock);
+	}
+	else{
+		objBlock.tellKind(objBlock.number);
+	}
+
+	//クリアチェック
+	var nBlock = this.sizeX * this.sizeY;
+	if(this.countOpen == (nBlock - this.nMine)){
+		this.emit('gameClear');
+		return;
+	}
 }
 
+Board.prototype.openBlock = function(objBlock){
+	if(objBlock.isOpen == true){return;}
+	if(objBlock.isFlag == true){return;}
+
+	objBlock.isOpen = true;
+	this.countOpen += 1;
+
+	if(objBlock.number == 0){
+		objBlock.tellKind(KindBlock.block_opened);
+		this.openAround(objBlock);
+	}
+	else{
+		objBlock.tellKind(objBlock.number);
+	}
+}
+//指定されたブロックの周囲を開ける
+Board.prototype.openAround = function(objBlock){
+	for(var y = -1; y <= 1; y++){
+		for(var x = -1; x <= 1; x++){
+			if(x == 0 && y == 0){continue;}
+			var block = this.getBlock(objBlock.posX + x, objBlock.posY + y);
+			if(block === undefined){continue;}
+			this.openBlock(block);
+		}
+	}
+}
+//旗印の操作
+Board.prototype.changeFlag = function(objBlock){
+	if(objBlock.isOpen == true){return;}
+
+	if(objBlock.isFlag == true){
+		objBlock.isFlag = false;
+		objBlock.tellKind(KindBlock.block_closed);
+	}
+	else{
+		objBlock.isFlag = true;
+		objBlock.tellKind(KindBlock.block_flag);
+	}
+}
+/*
 Board.prototype.openResult = function(objBlock, kind){
 	//何もしない
 	if(kind == KindBlock.block_opened){
@@ -378,7 +442,7 @@ Board.prototype.openZero = function(objBlock){
 		}
 	}
 }
-
+*/
 Board.prototype.create = function(X,Y){
 	X = parseInt(X);
 	Y = parseInt(Y);
@@ -404,9 +468,6 @@ Board.prototype.create = function(X,Y){
 			block.on('selected', function(block){
 				self.selectBlock(block);
 			});
-			block.on('openResult', function(block, kind){
-				self.openResult(block,kind);
-			});
 			this.blockArray[y].push(block);
 		}
 	}
@@ -416,24 +477,7 @@ Board.prototype.release = function(){
 	this.blockContainer.removeChildren();
 	this.blockArray = [];
 }
-/*
-Board.prototype.getResult = function(){
-	var count = 0;
-	for(var y = 0; y < this.sizeY; y++){
-		for(var x = 0; x < this.sizeX; x++){
-			var block = this.blockArray[y][x];
-			if(block.isOpen == true){
-				if(block.isMine == true){return -1;}//爆弾発見
-				else{count++};//爆弾ではない
-			}
-		}
-	}
-	if((this.nMine + count) == (this.sizeX * this.sizeY)){
-		return 1;//クリア
-	}
-	return 0;
-}
-*/
+
 Board.prototype.end = function(){
 	//this.removeChildren();
 
