@@ -28,12 +28,12 @@ var KindBlock = {
 var Watch = function(){
 	Pixim.Container.call(this);
 
-	this.bufTime = 0;
 	this.passedTime = 0;
 }
 
 Watch.prototype = Object.create(Pixim.Container.prototype);
 
+//計測開始用
 Watch.prototype.start = function(){
 	this.passedTime = 0;
 	this.task.on('anim', function(e){this.loop(e);});
@@ -46,33 +46,24 @@ Watch.prototype.end = function(){
 Watch.prototype.loop = function(e){
 	this.passedTime += e.delta / FPS;//秒単位に直して加算
 	this.emit('update', this.passedTime);
-/*
-	this.bufTime += e.delta;
-	if(this.bufTime >= FPS){
-		this.passedTime += 1;
-		this.emit('update', this.getPassedTime());
-		this.bufTime -= FPS;
-	}
-*/
 }
-/*
-Watch.prototype.getPassedTime = function(){
-	return this.passedTime;
-}
-*/
+
 
 var Header = function($){
 	Pixim.Container.call(this);
 
 	this.$ = $;
 
+	//時間表示用
 	this.textTime = this.addChild(new PIXI.Text('TIME',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'}));
 	this.textTime.x = 0;
 	this.textTime.anchor.x = 0;
 
+	//操作モード表示用
 	this.textTouchMode = this.addChild(new PIXI.Text('MODE',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'}));
 	this.textTouchMode.x = this.$.width - 200;
 
+	//ゲーム状態表示用
 	this.textGameMessage = this.addChild(new PIXI.Text('MESSAGE',{fontFamily : 'Arial', fontSize: 24, fill : 0xffffff, align : 'center'}));
 	this.textGameMessage.text = '';
 	this.textGameMessage.x = this.$.width/2;
@@ -106,6 +97,7 @@ var ModeChanger = function($, touchMode){
 	this.sprite.x = $.width - this.sprite.width;
 	this.sprite.y = 50;
 
+	//初期画像設定
 	this.tellKind(touchMode);
 
 	this.on('pointerdown', function(){
@@ -136,19 +128,19 @@ var Block = function($, X, Y){
 	this.$ = $;
 
 	this.sprite = this.addChild(new PIXI.Sprite($.resources.images.block_closed));
-
 	this.sprite.width = 30;
 	this.sprite.height = 30;
 	this.sprite.x = X * this.sprite.width;
 	this.sprite.y = Y * this.sprite.height;
 
+	//自身の位置を記録
 	this.posX = X;
 	this.posY = Y;
 
-	this.isOpen = false;
-	this.isMine = false;
-	this.isFlag = false;
-	this.number = 0;
+	this.isOpen = false;//開いているか
+	this.isMine = false;//爆弾か
+	this.isFlag = false;//旗が立っているか
+	this.number = 0;//周囲の爆弾数
 
 	this.on('pointerdown', function(){
 		this.emit('selected', this);
@@ -158,8 +150,10 @@ var Block = function($, X, Y){
 
 Block.prototype = Object.create(Pixim.Container.prototype);
 
+//状態によって見た目を変える
 Block.prototype.tellKind = function(kind){
 	var texture;
+	//以下のswitch文と同じ結果である
 	var keys = Object.keys(KindBlock);
 	texture = this.$.resources.images[keys[kind]];
 /*
@@ -197,61 +191,28 @@ Block.prototype.tellKind = function(kind){
 */
 	this.sprite.texture = texture;
 }
-/*
-Block.prototype.open = function(){
-	//フラッグが立っているなら何もしない
-	if(this.isFlag == true){
-		return this.emit('openResult', this, KindBlock.block_flag);
-	}
-	//既に開いているなら何もしない
-	if(this.isOpen == true){
-		return this.emit('openResult', this, KindBlock.block_opened);
-	}
 
-	//開く
-	this.isOpen = true;
-
-	//爆弾だった
-	if(this.isMine == true){
-		this.tellKind(KindBlock.block_mine);
-		return this.emit('openResult', this, KindBlock.block_mine);
-	}
-	//数字だった
-	this.tellKind(this.number);
-	this.emit('openResult', this, this.number);
-}
-
-Block.prototype.changeFlag = function(){
-	if(this.isOpen == true){return;}
-
-	if(this.isFlag == true){
-		this.isFlag = false;
-		this.tellKind(KindBlock.block_closed);
-	}
-	else{
-		this.isFlag = true;
-		this.tellKind(KindBlock.block_flag);
-	}
-}
-*/
 
 var Board = function($){
 	Pixim.Container.call(this);
 
 	this.$ = $;
 
+	//表示位置設定
 	this.y = 50;
-	this.sizeX = 0;
-	this.sizeY = 0;
 
-	this.nMine = 0;
-	this.countOpen = 0;
+	this.sizeX = 0;//列
+	this.sizeY = 0;//行
+	this.nMine = 0;//爆弾数
+	this.countOpen = 0;//開けたブロック数
 
+	//操作モード
 	this.touchMode = KindTouchMode.open;
 
 	this.blockContainer = this.addChild(new Pixim.Container());
-	this.blockArray = new Array();
+	this.blockArray = new Array();//ブロックのアクセス用配列
 
+	//操作モードを切り替えるボタン
 	this.modeChanger = this.addChild(new ModeChanger(this.$, this.touchMode));
 	var self = this;
 	this.modeChanger.on('selected', function(){
@@ -261,7 +222,9 @@ var Board = function($){
 
 Board.prototype = Object.create(Pixim.Container.prototype);
 
+//盤面初期化用
 Board.prototype.initialize = function(nMine){
+	//ブロック配列が作られていなければ初期化できない
 	//if(this.sizeX <= 0 && this.sizeY <= 0){return;}
 	if(this.blockArray.length <= 0){return;}
 
@@ -270,6 +233,7 @@ Board.prototype.initialize = function(nMine){
 	this.putMines(nMine);
 }
 
+//全ブロック初期化用
 Board.prototype.clearBlocks = function(){
 	for(var y = 0; y < this.sizeY; y++){
 		for(var x = 0; x < this.sizeX; x++){
@@ -282,6 +246,7 @@ Board.prototype.clearBlocks = function(){
 	}
 }
 
+//爆弾設置用
 Board.prototype.putMines = function(nMine){
 	this.nMine = nMine;
 
@@ -305,25 +270,28 @@ Board.prototype.putMines = function(nMine){
 		numList.push(i);
 	}
 	for(var n = 0; n < nMine; n++){
+		//番号を抽出
 		var num = numList.splice(parseInt(Math.random() * numList.length), 1);
-		var y = parseInt(num / this.sizeY);
-		var x = parseInt(num % this.sizeY);
+		//番号から行と列の数を求める
+		var y = parseInt(num / this.sizeX);
+		var x = parseInt(num - (y * this.sizeX));
 		var block = this.blockArray[y][x];
 		if(block.isMine == false){
 			block.isMine = true;
 			//incliment around block`s number
 			for(var i = -1; i <= 1; i++){
 				for(var j = -1; j <= 1; j++){
-					if(i == 0 && j == 0){continue;}//me
+					if(i == 0 && j == 0) continue;//me
 					//var block = this.blockArray[y+i][x+j];
 					var block = this.getBlock(x+j,y+i);
-					if(block === undefined){continue;}
+					if(block === undefined) continue;
 					block.number++;
 				}
 			}
 		}
 	}
 }
+
 //ブロックがタップされたとき
 Board.prototype.selectBlock = function(objBlock){
 	//フラッグモードの操作
@@ -345,6 +313,7 @@ Board.prototype.selectBlock = function(objBlock){
 		return;
 	}
 
+	//０番処理
 	if(objBlock.number == 0){
 		objBlock.tellKind(KindBlock.block_opened);
 		this.openAround(objBlock);
@@ -361,6 +330,7 @@ Board.prototype.selectBlock = function(objBlock){
 	}
 }
 
+//タップされた時以外の開く処理
 Board.prototype.openBlock = function(objBlock){
 	if(objBlock.isOpen == true){return;}
 	if(objBlock.isFlag == true){return;}
@@ -368,6 +338,7 @@ Board.prototype.openBlock = function(objBlock){
 	objBlock.isOpen = true;
 	this.countOpen += 1;
 
+	//０番処理
 	if(objBlock.number == 0){
 		objBlock.tellKind(KindBlock.block_opened);
 		this.openAround(objBlock);
@@ -376,21 +347,24 @@ Board.prototype.openBlock = function(objBlock){
 		objBlock.tellKind(objBlock.number);
 	}
 }
+
 //指定されたブロックの周囲を開ける
 Board.prototype.openAround = function(objBlock){
 	for(var y = -1; y <= 1; y++){
 		for(var x = -1; x <= 1; x++){
-			if(x == 0 && y == 0){continue;}
+			if(x == 0 && y == 0) continue;//me
 			var block = this.getBlock(objBlock.posX + x, objBlock.posY + y);
-			if(block === undefined){continue;}
+			if(block === undefined) continue;
 			this.openBlock(block);
 		}
 	}
 }
+
 //旗印の操作
 Board.prototype.changeFlag = function(objBlock){
 	if(objBlock.isOpen == true){return;}
 
+	//旗印があれば消す、なければ付ける
 	if(objBlock.isFlag == true){
 		objBlock.isFlag = false;
 		objBlock.tellKind(KindBlock.block_closed);
@@ -400,49 +374,8 @@ Board.prototype.changeFlag = function(objBlock){
 		objBlock.tellKind(KindBlock.block_flag);
 	}
 }
-/*
-Board.prototype.openResult = function(objBlock, kind){
-	//何もしない
-	if(kind == KindBlock.block_opened){
-		return;
-	}
-	if(kind == KindBlock.block_flag){
-		return;
-	}
 
-	//開いた
-	this.countOpen++;
-
-	//爆弾
-	if(kind == KindBlock.block_mine){
-		this.emit('gameOver');
-		return;
-	}
-
-	//０番
-	if(kind == KindBlock.number0){
-		this.openZero(objBlock);
-	}
-
-	//クリアチェック
-	var nBlock = this.sizeX * this.sizeY;
-	if(this.countOpen == (nBlock - this.nMine)){
-		this.emit('gameClear');
-		return;
-	}
-}
-
-Board.prototype.openZero = function(objBlock){
-	for(var y = -1; y <= 1; y++){
-		for(var x = -1; x <= 1; x++){
-			if(x == 0 && y == 0){continue;}
-			var block = this.getBlock(objBlock.posX + x, objBlock.posY + y);
-			if(block === undefined){continue;}
-			block.open();
-		}
-	}
-}
-*/
+//盤面生成用
 Board.prototype.create = function(X,Y){
 	X = parseInt(X);
 	Y = parseInt(Y);
@@ -473,28 +406,22 @@ Board.prototype.create = function(X,Y){
 	}
 }
 
+
 Board.prototype.release = function(){
 	this.blockContainer.removeChildren();
 	this.blockArray = [];
 }
 
 Board.prototype.end = function(){
+	//結果は表示したままにしておく
 	//this.removeChildren();
 
+	//操作を受け付けなくする
 	this.interactiveChildren = false;
-/*
-	for(var y = 0; y < this.sizeY; y++){
-		for(var x = 0; x < this.sizeX; x++){
-			var block = this.blockArray[y][x];
-			block.interactive = false;
-		}
-	}
-	this.modeChanger.interactive = false;
-*/
 }
 
+//操作モード切り替え用
 Board.prototype.changeMode = function(){
-	//操作モードチェンジ
 	var keys = Object.keys(KindTouchMode);
 	this.touchMode = (this.touchMode + 1) % keys.length;
 
@@ -525,6 +452,7 @@ Board.prototype.getTouchMode = function(){
 Board.prototype.getBlock = function(X,Y){
 	X = parseInt(X);
 	Y = parseInt(Y);
+	//範囲外判定
 	if(X < 0 || X >= this.sizeX || Y < 0 || Y >= this.sizeY){
 		return undefined;
 	}
@@ -550,18 +478,6 @@ var Root = function($){
 		var message;
 		var keys = Object.keys(KindTouchMode);
 		message = keys[mode].toUpperCase();
-/*
-		switch(mode){
-			case KindTouchMode.open:{
-				message = 'OPEN';
-				break;
-			}
-			case KindTouchMode.flag:{
-				message = 'FLAG';
-				break;
-			}
-		}
-*/
 		self.header.viewMode(message);
 	});
 	this.board.on('gameClear', function(){
@@ -570,27 +486,31 @@ var Root = function($){
 	this.board.on('gameOver', function(){
 		self.resultGameOver();
 	});
+
+	//盤面の初期化
 	this.board.create(10,10);
 	this.board.initialize(10);
 
 	this.watch.start();
-	this.header.updateTime(this.watch.passedTime);
+	this.header.updateTime(0);
 	this.header.viewMode('OPEN');
 }
 
 Root.prototype = Object.create(Pixim.Container.prototype);
 
+//ゲーム終了処理
 Root.prototype.end = function(message){
 	this.watch.end();
 	this.board.end();
-	this.header.updateTime(this.watch.passedTime);
 	this.header.viewMessage(message);
 }
 
+//ゲームクリア処理
 Root.prototype.resultGameClear = function(){
 	this.end('GAME CLEAR');
 }
 
+//ゲームオーバー処理
 Root.prototype.resultGameOver = function(){
 	this.end('GAME OVER');
 }
