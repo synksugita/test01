@@ -262,7 +262,8 @@ Board.prototype.putMines = function(nMine){
 		var num = numList.splice(parseInt(Math.random() * numList.length), 1);
 		//番号から行と列の数を求める
 		var y = parseInt(num / this.sizeX);
-		var x = parseInt(num - (y * this.sizeX));
+		//var x = parseInt(num - (y * this.sizeX));
+		var x = parseInt(num % this.sizeX);
 		var block = this.blockArray[y][x];
 		if(block.isMine == false){
 			block.isMine = true;
