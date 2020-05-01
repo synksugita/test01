@@ -105,15 +105,6 @@ var ModeChanger = function($, texture){
 
 ModeChanger.prototype = Object.create(Pixim.Container.prototype);
 
-ModeChanger.prototype.tellKind = function(touchMode){
-	var texture;
-	switch(touchMode){
-		case KindTouchMode.open:{texture = this.$.resources.images.block_opened; break;}
-		case KindTouchMode.flag:{texture = this.$.resources.images.block_flag;   break;}
-	}
-	this.sprite.texture = texture;
-}
-
 ModeChanger.prototype.setTexture = function(texture){
 	this.sprite.texture = texture;
 }
@@ -248,7 +239,7 @@ Board.prototype.putMines = function(nMine){
 	this.nMine = nMine;
 
 	//爆弾無し
-	if(nMine <= 0){return}
+	if(nMine <= 0) return;
 
 	//全部爆弾
 	var nBlock = this.sizeX * this.sizeY;
@@ -297,8 +288,8 @@ Board.prototype.selectBlock = function(objBlock){
 		return;
 	}
 
-	if(objBlock.isOpen == true){return;}
-	if(objBlock.isFlag == true){return;}
+	if(objBlock.isOpen == true) return;
+	if(objBlock.isFlag == true) return;
 
 	objBlock.isOpen = true;
 	this.countOpen += 1;
@@ -329,8 +320,8 @@ Board.prototype.selectBlock = function(objBlock){
 
 //タップされた時以外の開く処理
 Board.prototype.openBlock = function(objBlock){
-	if(objBlock.isOpen == true){return;}
-	if(objBlock.isFlag == true){return;}
+	if(objBlock.isOpen == true) return;
+	if(objBlock.isFlag == true) return;
 
 	objBlock.isOpen = true;
 	this.countOpen += 1;
@@ -359,7 +350,7 @@ Board.prototype.openAround = function(objBlock){
 
 //旗印の操作
 Board.prototype.changeFlag = function(objBlock){
-	if(objBlock.isOpen == true){return;}
+	if(objBlock.isOpen == true) return;
 
 	//旗印があれば消す、なければ付ける
 	if(objBlock.isFlag == true){
@@ -376,7 +367,7 @@ Board.prototype.changeFlag = function(objBlock){
 Board.prototype.create = function(X,Y){
 	X = parseInt(X);
 	Y = parseInt(Y);
-	if(X < 0 || Y < 0){return;}
+	if(X < 0 || Y < 0) return;
 
 	this.sizeX = X;
 	this.sizeY = Y;
