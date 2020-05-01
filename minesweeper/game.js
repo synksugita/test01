@@ -86,19 +86,16 @@ Header.prototype.viewMode = function(mode){
 }
 
 
-var ModeChanger = function($, touchMode){
+var ModeChanger = function($, texture){
 	Pixim.Container.call(this);
 
 	this.$ = $;
 
-	this.sprite = this.addChild(new PIXI.Sprite());
+	this.sprite = this.addChild(new PIXI.Sprite(texture));
 	this.sprite.width = 50;
 	this.sprite.height = 50;
 	this.sprite.x = $.width - this.sprite.width;
 	this.sprite.y = 50;
-
-	//初期画像設定
-	this.tellKind(touchMode);
 
 	this.on('pointerdown', function(){
 		this.emit('selected');
@@ -213,7 +210,7 @@ var Board = function($){
 	this.blockArray = new Array();//ブロックのアクセス用配列
 
 	//操作モードを切り替えるボタン
-	this.modeChanger = this.addChild(new ModeChanger(this.$, this.touchMode));
+	this.modeChanger = this.addChild(new ModeChanger(this.$, this.$.resources.images.block_opened));
 	var self = this;
 	this.modeChanger.on('selected', function(){
 		self.changeMode();
@@ -438,9 +435,7 @@ Board.prototype.changeMode = function(){
 		}
 	}
 	this.modeChanger.setTexture(texture);
-/*
-	this.modeChanger.tellKind(this.touchMode);
-*/
+
 	//文字表示切替
 	this.emit('changeMode', this.touchMode);
 }
