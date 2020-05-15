@@ -1,5 +1,5 @@
-var FPS = 60;
-
+//var FPS = 60;
+/*
 var CharSet = [
 	['ア','イ','ウ','エ','オ'],
 	['カ','キ','ク','ケ','コ'],
@@ -17,14 +17,16 @@ var CharSet = [
 	['バ','ビ','ブ','ベ','ボ'],
 	['パ','ピ','プ','ペ','ポ'],
 ];
-
+*/
+/*
 var Hint = function(num, x, y, key){
 	this.num = num;
 	this.x = x;
 	this.y = y;
 	this.key = key;
 }
-
+*/
+/*
 var Blueprint = function(){
 	this.answer = [
 		['ミ','ツ','','シ','ラ','ハ'],
@@ -60,9 +62,9 @@ var Blueprint = function(){
 	this.hintY.push(new Hint(13, 4, 5, "蝶を捕る道具"));
 	this.hintY.name = 'タテのカギ';
 }
+*/
 
-
-var Cell = function(isActive, X, Y){
+var Cell = function(isActive, X, Y, width, height){
 	Pixim.Container.call(this);
 
 	this.isActive = isActive;
@@ -82,10 +84,10 @@ var Cell = function(isActive, X, Y){
 	this.on('pointerup', function(){
 		this.emit('up', this);
 	});
-
+/*
 	var width = 35;
 	var height = 35;
-
+*/
 	this.x = X * width;
 	this.y = Y * width;
 
@@ -93,14 +95,23 @@ var Cell = function(isActive, X, Y){
 	this.posY = Y;
 
 	//背景
+/*
 	this.graphics = this.addChild(new PIXI.Graphics());
 	this.graphics.beginFill(backcolor);
 	this.graphics.drawRect(0,0,width,height);
 	this.graphics.endFill();
+*/
+	this.sprite = this.addChild(new PIXI.Sprite());
+	this.sprite.x = 0;
+	this.sprite.y = 0;
+	this.sprite.width = width;
+	this.sprite.height = height;
 
 	//文字
+	var small = (width < height) ? width : height;
+	fontsize = small * 0.5;//サイズ調整
 	var style = {
-		fontSize: 20,
+		fontSize: fontsize,
 		fill: 0xffffff,
 	}
 	this.text = this.addChild(new PIXI.Text('',style));
@@ -110,11 +121,15 @@ var Cell = function(isActive, X, Y){
 	this.text.x = (width - 0) / 2;
 	this.text.y = (height - 0) / 2;
 
+	//小さい数字
+	fontsize = small * 0.25;//サイズ調整
 	var style = {
-		fontSize: 10,
+		fontSize: fontsize,
 		fill: 0xffffff,
 	}
-	this.textNum = this.addChild(new PIXI.Text('',style));;
+	this.textNum = this.addChild(new PIXI.Text('',style));
+	this.textNum.x = 1;
+	this.textNum.y = 1;
 }
 
 Cell.prototype = Object.create(Pixim.Container.prototype);
@@ -127,12 +142,21 @@ Cell.prototype.setTextNum = function(num){
 	this.textNum.text = num;
 }
 
+Cell.prototype.setTexture = function(texture){
+	this.sprite.texture = texture;
+}
+
 
 /*クロスワードの設計図を基に作られる*/
-var Board = function(blueprint){
+var Board = function($, blueprint, posX, posY, sizeX, sizeY){
 	Pixim.Container.call(this);
 
+	this.$ = $;
 	this.blueprint = blueprint;
+	this.x = posX;
+	this.y = posY;
+	this.sizeX = sizeX;
+	this.sizeY = sizeY;
 
 	this.bufCell;//選択されたセル記録用
 	this.inputBox = this.addChild(new Pixim.Container());//入力フォーム保持用
@@ -152,6 +176,10 @@ Board.prototype.create = function(){
 
 	var answer = this.blueprint.answer;
 
+	//セルの大きさを決める
+	var cellWidth = this.sizeX / answer[0].length;
+	var cellHeight = this.sizeY / answer.length;
+
 	//二次元配列で作る
 	for(var y = 0; y < answer.length; y++){
 		this.cellArray.push(new Array());
@@ -159,21 +187,29 @@ Board.prototype.create = function(){
 	//セルを作る
 	for(var y = 0; y < answer.length; y++){
 		for(var x = 0; x < answer[y].length; x++){
+			var texture;
 			var isActive;
 			if(answer[y][x] != ''){
 				isActive = true;
+				texture = this.$.resources.images.back1;
 				this.nCell++;
 			}
 			else{
 				isActive = false;
+				texture = this.$.resources.images.back0;
 			}
-			var cell = new Cell(isActive, x, y);
+			var cell = new Cell(isActive, x, y, cellWidth, cellHeight);
+			cell.setTexture(texture);
 			cell.on('down', function(cell){
 				if(self.bufCell != cell){
 					//別のセルを選択した
+					if(self.bufCell !== undefined){
+						self.bufCell.setTexture(self.$.resources.images.back1);
+					}
+					cell.setTexture(self.$.resources.images.back2);
 					self.bufCell = cell;
 					self.inputBox.removeChildren();
-					var inputBox = self.inputBox.addChild(new InputBox(cell));
+					var inputBox = self.inputBox.addChild(new InputBox(cell, 0, self.sizeY * 0.05 + self.sizeY));
 					inputBox.on('input', function(char, charOld){
 						if(char == charOld) return;
 						if(charOld == ''){
@@ -198,6 +234,7 @@ Board.prototype.create = function(){
 					});
 					inputBox.on('close', function(){
 						self.inputBox.removeChildren();
+						self.bufCell.setTexture(self.$.resources.images.back1);
 						self.bufCell = undefined;
 					});
 				}
@@ -231,6 +268,7 @@ Board.prototype.checkAnswer = function(){
 	//正答数が満たない
 	if(this.nCell > this.correctAnswer){
 		this.emit('error');
+		return;
 	}
 /*
 	var answer = this.blueprint.answer;
@@ -294,7 +332,7 @@ Button.prototype = Object.create(Pixim.Container.prototype);
 
 
 //指定されたセルに対する入力
-var InputBox = function(cell){
+var InputBox = function(cell, posX, posY){
 	Pixim.Container.call(this);
 
 	this.bufButton;//押されたボタン記録用
@@ -302,7 +340,7 @@ var InputBox = function(cell){
 	var self = this;
 
 	for(var i = 0; i < CharSet.length; i++){
-		var button = this.addChild(new Button((25+1)*i, 300, CharSet[i][0], CharSet[i]));
+		var button = this.addChild(new Button((25+1)*i + posX, posY, CharSet[i][0], CharSet[i]));
 		button.on('down', function(objButton){
 			//違うボタンを押したか
 			if(self.bufButton != objButton){
@@ -317,7 +355,7 @@ var InputBox = function(cell){
 		});
 	}
 	//削除ボタン
-	var button = this.addChild(new Button(0, 350,'×'));
+	var button = this.addChild(new Button(posX, posY + 50,'×'));
 	button.on('down', function(){
 		var charOld = cell.text.text;
 		cell.setText('');
@@ -327,7 +365,7 @@ var InputBox = function(cell){
 		self.emit('delete', charOld);
 	});
 	//閉じるボタン
-	var button = this.addChild(new Button(100,350,'閉'));
+	var button = this.addChild(new Button(posX + 100, posY + 50,'閉'));
 	button.on('down', function(){
 		self.emit('close');
 	});
@@ -336,33 +374,47 @@ var InputBox = function(cell){
 InputBox.prototype = Object.create(Pixim.Container.prototype);
 
 
-var HintBox = function(X, Y, hint){
+var HintBox = function($, hint, X, Y, width, height){
 	Pixim.Container.call(this);
 
+	this.$ = $
+	this.hint = hint;
 	this.x = X;
 	this.y = Y;
 
-	var fontsize = 16;
+	var fontsize = height / hint.length * 0.8;
+/*
 	var width = 400;
 	var height = (hint.length + 1) * fontsize;
-
+*/
+/*
 	this.graphics = this.addChild(new PIXI.Graphics());
 	this.graphics.beginFill(0x808080);
 	this.graphics.drawRect(0,0,width,height);
 	this.graphics.endFill();
+*/
+	this.sprite = this.addChild(new PIXI.Sprite(this.$.resources.images.back1));
+	this.sprite.x = 0;
+	this.sprite.y = 0;
+	this.sprite.width = width;
+	this.sprite.height = height;
 
 	var style = {
 		fontSize: fontsize,
 		fill: 0xffffff,
 	}
+	var textPosX = width * 0.05;
+	var textPosY = height * 0.05;
 	this.textContainer = this.addChild(new Pixim.Container());
-	this.textContainer.addChild(new PIXI.Text(hint.name, style));
+	var textName = this.textContainer.addChild(new PIXI.Text(hint.name, style));
+	textName.x = textPosX;
+	textName.y = textPosY;
 	for(var i = 0; i < hint.length; i++){
 		var num = hint[i].num;
 		var key = hint[i].key;
 		var text = this.textContainer.addChild(new PIXI.Text(num+","+key,style));
-		text.x = 0;
-		text.y = fontsize * (i + 1);
+		text.x = textPosX;
+		text.y = fontsize * (i + 1) + textPosY;
 	}
 }
 
@@ -372,8 +424,10 @@ HintBox.prototype = Object.create(Pixim.Container.prototype);
 var Header = function(){
 	Pixim.Container.call(this);
 
+	var fontsize = 20;
+
 	var style = {
-		fontSize: 24,
+		fontSize: fontsize,
 		fill: 0xffffff,
 	}
 	this.textTime = this.addChild(new PIXI.Text('0',style));
@@ -427,16 +481,53 @@ Watch.prototype.loop = function(e){
 }
 
 
+var TextButton = function(text, X, Y, num){
+	Pixim.Container.call(this);
+
+	this.x = X;
+	this.y = Y;
+
+	this.num = num;
+
+	var fontsize = 20;
+
+	//背景
+	this.graphics = this.addChild(new PIXI.Graphics());
+	this.graphics.beginFill(0x808080);
+	this.graphics.drawRect(0, 0, fontsize * text.length, fontsize);
+	this.graphics.endFill();
+
+	//文字
+	var style = {
+		fontSize: fontsize,
+		fill: 0xffffff,
+	}
+	this.text = this.addChild(new PIXI.Text(text, style));
+
+	this.on('pointerdown', function(){
+		this.emit('down', this);
+	});
+	this.interactive = true;
+}
+
+TextButton.prototype = Object.create(Pixim.Container.prototype);
+
+
 var Root = function($){
 	Pixim.Container.call(this);
 
+	this.$ = $;
+
+	this.containerIngame = this.addChild(new Pixim.Container());
+	this.containerOutgame = this.addChild(new Pixim.Container());
+/*
 	var self = this;
 
-	var blueprint = new Blueprint();
+	var blueprint = new Blueprint2();
 
 	this.header = this.addChild(new Header());
 
-	this.board = this.addChild(new Board(blueprint));
+	this.board = this.addChild(new Board($, blueprint, 0, 0, 250, 250));
 	this.board.create();
 	this.board.on('clear', function(){
 		self.header.viewStatus('CLEAR');
@@ -446,17 +537,74 @@ var Root = function($){
 		self.header.viewStatus('ERROR');
 	});
 
-	this.hintboxX = this.addChild(new HintBox(0,400,blueprint.hintX));
-	this.hintboxY = this.addChild(new HintBox(0,600,blueprint.hintY));
+	this.hintboxX = this.addChild(new HintBox($, blueprint.hintX, 0, 400, 450, 200));
+	this.hintboxY = this.addChild(new HintBox($, blueprint.hintY, 0, 600, 450, 200));
 
 	this.watch = this.addChild(new Watch(300,0));
 	this.watch.on('update', function(time){
 		self.header.viewTime(time);
 	});
 	this.watch.start();
+*/
+	this.toOutgame();
 }
 
 Root.prototype = Object.create(Pixim.Container.prototype);
+
+Root.prototype.toIngame = function(blueprint){
+	this.containerOutgame.removeChildren();
+
+	var $ = this.$;
+
+	var self = this;
+
+	this.header = this.containerIngame.addChild(new Header());
+
+	this.board = this.containerIngame.addChild(new Board($, blueprint, 0, 0, 250, 250));
+	this.board.create();
+	this.board.on('clear', function(){
+		self.header.viewStatus('CLEAR');
+		self.end();
+		//選択画面に戻るボタン
+		var button = self.containerIngame.addChild(new Button(self.$.width-50, 0, '戻'));
+		button.on('down', function(){
+			self.toOutgame();
+		});
+	});
+	this.board.on('error', function(){
+		self.header.viewStatus('ERROR');
+	});
+
+	this.hintboxX = this.containerIngame.addChild(new HintBox($, blueprint.hintX, 0, 400, 450, 200));
+	this.hintboxY = this.containerIngame.addChild(new HintBox($, blueprint.hintY, 0, 600, 450, 200));
+
+	this.watch = this.containerIngame.addChild(new Watch(300,0));
+	this.watch.on('update', function(time){
+		self.header.viewTime(time);
+	});
+	this.watch.start();
+}
+
+Root.prototype.toOutgame = function(){
+	this.containerIngame.removeChildren();
+
+	var $ = this.$;
+
+	var self = this;
+
+	for(var i = 0; i < CrosswordList.length; i++){
+		var button = this.containerOutgame.addChild(new TextButton('CrossWord'+i, 0, i*30, i));
+		button.on('down', function(button){
+			self.toIngame(CrosswordList[button.num]);
+		});
+	}
+/*
+	var button = this.containerIngame.addChild(new Button($.width-50, 0));
+	button.on('down', function(){
+		self.toIngame(CrosswordList[1]);
+	});
+*/
+}
 
 Root.prototype.end = function(){
 	this.watch.end();
@@ -473,6 +621,9 @@ content.setConfig({
 });
 
 content.defineImages({
+	back0: 'images/back0.png',
+	back1: 'images/back1.png',
+	back2: 'images/back2.png',
 });
 
 content.defineLibraries({
@@ -485,6 +636,9 @@ var app = new Pixim.Application({
 	width: content._piximData.config.width,
 	height: content._piximData.config.height
 });
+
+app.fullScreen();
+console.log(app);
 
 
 //Attach content to application and run application
