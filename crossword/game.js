@@ -1,68 +1,4 @@
-//var FPS = 60;
-/*
-var CharSet = [
-	['ア','イ','ウ','エ','オ'],
-	['カ','キ','ク','ケ','コ'],
-	['サ','シ','ス','セ','ソ'],
-	['タ','チ','ツ','テ','ト'],
-	['ナ','ニ','ヌ','ネ','ノ'],
-	['ハ','ヒ','フ','ヘ','ホ'],
-	['マ','ミ','ム','メ','モ'],
-	['ヤ','ユ','ヨ'],
-	['ラ','リ','ル','レ','ロ'],
-	['ワ','ヲ','ン'],
-	['ガ','ギ','グ','ゲ','ゴ'],
-	['ザ','ジ','ズ','ゼ','ゾ'],
-	['ダ','ヂ','ヅ','デ','ド'],
-	['バ','ビ','ブ','ベ','ボ'],
-	['パ','ピ','プ','ペ','ポ'],
-];
-*/
-/*
-var Hint = function(num, x, y, key){
-	this.num = num;
-	this.x = x;
-	this.y = y;
-	this.key = key;
-}
-*/
-/*
-var Blueprint = function(){
-	this.answer = [
-		['ミ','ツ','','シ','ラ','ハ'],
-		['ア','ゲ','ダ','マ','','ネ'],
-		['イ','','ル','イ','ジ',''],
-		['','ア','マ','','カ','コ'],
-		['ツ','タ','','ア','ン','コ'],
-		['ナ','マ','ゴ','ミ','','ア'],
-	];
 
-	this.hintX = new Array();
-	this.hintX.push(new Hint(1, 1, 1, "花の○○を吸う"));
-	this.hintX.push(new Hint(3, 4, 1, "真剣○○○取り"));
-	this.hintX.push(new Hint(5, 1, 2, "「タヌキうどん」に入っているもの"));
-	this.hintX.push(new Hint(7, 3, 3, "人気商品の○○○品が出回る"));
-	this.hintX.push(new Hint(9, 2, 4, "海に潜って魚介類を採る仕事"));
-	this.hintX.push(new Hint(10, 5, 4, "○○→現在→未来"));
-	this.hintX.push(new Hint(12, 1, 5, "壁を這う植物"));
-	this.hintX.push(new Hint(13, 4, 5, "タイヤキに詰まっているもの"));
-	this.hintX.push(new Hint(14, 1, 6, "料理をすると出る不要なもの"));
-	this.hintX.name = 'ヨコのカギ';
-
-	this.hintY = new Array();
-	this.hintY.push(new Hint(1, 1, 1, "「恋愛」でなくコレで結婚"));
-	this.hintY.push(new Hint(2, 2, 1, "「柘植」と書くハンコの材料になる木"));
-	this.hintY.push(new Hint(3, 4, 1, "⇔兄弟"));
-	this.hintY.push(new Hint(4, 6, 1, "蝶はコレを使って舞います"));
-	this.hintY.push(new Hint(6, 3, 2, "願いが叶ったら目を描く縁起物"));
-	this.hintY.push(new Hint(8, 5, 3, "サナギから脱皮するのに○○○が掛かる"));
-	this.hintY.push(new Hint(9, 2, 4, "触覚がある部分"));
-	this.hintY.push(new Hint(11, 6, 4, "「ホットチョコレート」とも呼ぶ飲み物"));
-	this.hintY.push(new Hint(12, 1, 5, "運動会で引っ張り合うもの"));
-	this.hintY.push(new Hint(13, 4, 5, "蝶を捕る道具"));
-	this.hintY.name = 'タテのカギ';
-}
-*/
 
 var Cell = function(isActive, X, Y, width, height){
 	Pixim.Container.call(this);
@@ -84,10 +20,7 @@ var Cell = function(isActive, X, Y, width, height){
 	this.on('pointerup', function(){
 		this.emit('up', this);
 	});
-/*
-	var width = 35;
-	var height = 35;
-*/
+
 	this.x = X * width;
 	this.y = Y * width;
 
@@ -95,12 +28,6 @@ var Cell = function(isActive, X, Y, width, height){
 	this.posY = Y;
 
 	//背景
-/*
-	this.graphics = this.addChild(new PIXI.Graphics());
-	this.graphics.beginFill(backcolor);
-	this.graphics.drawRect(0,0,width,height);
-	this.graphics.endFill();
-*/
 	this.sprite = this.addChild(new PIXI.Sprite());
 	this.sprite.x = 0;
 	this.sprite.y = 0;
@@ -374,7 +301,7 @@ var InputBox = function(cell, posX, posY){
 InputBox.prototype = Object.create(Pixim.Container.prototype);
 
 
-var HintBox = function($, hint, X, Y, width, height){
+var HintBox = function($, key, hint, X, Y, width, height){
 	Pixim.Container.call(this);
 
 	this.$ = $
@@ -383,16 +310,7 @@ var HintBox = function($, hint, X, Y, width, height){
 	this.y = Y;
 
 	var fontsize = height / hint.length * 0.8;
-/*
-	var width = 400;
-	var height = (hint.length + 1) * fontsize;
-*/
-/*
-	this.graphics = this.addChild(new PIXI.Graphics());
-	this.graphics.beginFill(0x808080);
-	this.graphics.drawRect(0,0,width,height);
-	this.graphics.endFill();
-*/
+
 	this.sprite = this.addChild(new PIXI.Sprite(this.$.resources.images.back1));
 	this.sprite.x = 0;
 	this.sprite.y = 0;
@@ -406,7 +324,7 @@ var HintBox = function($, hint, X, Y, width, height){
 	var textPosX = width * 0.05;
 	var textPosY = height * 0.05;
 	this.textContainer = this.addChild(new Pixim.Container());
-	var textName = this.textContainer.addChild(new PIXI.Text(hint.name, style));
+	var textName = this.textContainer.addChild(new PIXI.Text(key, style));
 	textName.x = textPosX;
 	textName.y = textPosY;
 	for(var i = 0; i < hint.length; i++){
@@ -505,7 +423,7 @@ var TextButton = function(text, X, Y, num){
 	this.text = this.addChild(new PIXI.Text(text, style));
 
 	this.on('pointerdown', function(){
-		this.emit('down', this);
+		this.emit('down', this.num);
 	});
 	this.interactive = true;
 }
@@ -518,34 +436,11 @@ var Root = function($){
 
 	this.$ = $;
 
-	this.containerIngame = this.addChild(new Pixim.Container());
-	this.containerOutgame = this.addChild(new Pixim.Container());
-/*
 	var self = this;
 
-	var blueprint = new Blueprint2();
+	this.containerIngame = this.addChild(new Pixim.Container());
+	this.containerOutgame = this.addChild(new Pixim.Container());
 
-	this.header = this.addChild(new Header());
-
-	this.board = this.addChild(new Board($, blueprint, 0, 0, 250, 250));
-	this.board.create();
-	this.board.on('clear', function(){
-		self.header.viewStatus('CLEAR');
-		self.end();
-	});
-	this.board.on('error', function(){
-		self.header.viewStatus('ERROR');
-	});
-
-	this.hintboxX = this.addChild(new HintBox($, blueprint.hintX, 0, 400, 450, 200));
-	this.hintboxY = this.addChild(new HintBox($, blueprint.hintY, 0, 600, 450, 200));
-
-	this.watch = this.addChild(new Watch(300,0));
-	this.watch.on('update', function(time){
-		self.header.viewTime(time);
-	});
-	this.watch.start();
-*/
 	this.toOutgame();
 }
 
@@ -565,24 +460,25 @@ Root.prototype.toIngame = function(blueprint){
 	this.board.on('clear', function(){
 		self.header.viewStatus('CLEAR');
 		self.end();
-		//選択画面に戻るボタン
-		var button = self.containerIngame.addChild(new Button(self.$.width-50, 0, '戻'));
-		button.on('down', function(){
-			self.toOutgame();
-		});
 	});
 	this.board.on('error', function(){
 		self.header.viewStatus('ERROR');
 	});
 
-	this.hintboxX = this.containerIngame.addChild(new HintBox($, blueprint.hintX, 0, 400, 450, 200));
-	this.hintboxY = this.containerIngame.addChild(new HintBox($, blueprint.hintY, 0, 600, 450, 200));
+	this.hintboxX = this.containerIngame.addChild(new HintBox($, 'ヨコのカギ', blueprint.hintX, 0, 400, 450, 200));
+	this.hintboxY = this.containerIngame.addChild(new HintBox($, 'タテのカギ', blueprint.hintY, 0, 600, 450, 200));
 
 	this.watch = this.containerIngame.addChild(new Watch(300,0));
 	this.watch.on('update', function(time){
 		self.header.viewTime(time);
 	});
 	this.watch.start();
+
+	//選択画面に戻るボタン
+	var button = this.containerIngame.addChild(new Button(this.$.width-50, 0, '戻'));
+	button.on('down', function(){
+		self.toOutgame();
+	});
 }
 
 Root.prototype.toOutgame = function(){
@@ -591,19 +487,16 @@ Root.prototype.toOutgame = function(){
 	var $ = this.$;
 
 	var self = this;
-
 	for(var i = 0; i < CrosswordList.length; i++){
-		var button = this.containerOutgame.addChild(new TextButton('CrossWord'+i, 0, i*30, i));
-		button.on('down', function(button){
-			self.toIngame(CrosswordList[button.num]);
+		var button = this.containerOutgame.addChild(new TextButton(CrosswordList[i], 0, i*30, i));
+		button.on('down', function(num){
+			//jsonから問題を読み込む
+			new PIXI.Loader().add("obj", CrosswordList[num] + ".json").load(function(loader, resources){
+				var data = resources.obj.data;
+				self.toIngame(data);
+			});
 		});
 	}
-/*
-	var button = this.containerIngame.addChild(new Button($.width-50, 0));
-	button.on('down', function(){
-		self.toIngame(CrosswordList[1]);
-	});
-*/
 }
 
 Root.prototype.end = function(){
@@ -638,7 +531,7 @@ var app = new Pixim.Application({
 });
 
 app.fullScreen();
-console.log(app);
+//console.log(app);
 
 
 //Attach content to application and run application
