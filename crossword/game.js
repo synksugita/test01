@@ -200,13 +200,12 @@ Board.prototype.setHintNumber = function(hint){
 Board.prototype.checkAnswer = function(){
 	//回答数が満たない
 	if(this.nCell > this.nAnswered) return;
-/*
+
 	//正答数が満たない
 	if(this.nCell > this.correctAnswer){
-		this.emit('error');
+		//this.emit('error');
 		return;
 	}
-*/
 /*
 	var answer = this.blueprint.answer;
 	for(var y = 0; y < answer.length; y++){
