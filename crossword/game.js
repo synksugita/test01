@@ -86,7 +86,7 @@ var Board = function($, blueprint, posX, posY, sizeX, sizeY){
 	this.sizeY = sizeY;
 
 	this.bufCell;//選択されたセル記録用
-	this.inputBox = this.addChild(new Pixim.Container());//入力フォーム保持用
+	this.containerInputBox = this.addChild(new Pixim.Container());//入力フォーム保持用
 
 	this.cellContainer = this.addChild(new Pixim.Container());
 	this.cellArray = new Array();
@@ -97,7 +97,6 @@ var Board = function($, blueprint, posX, posY, sizeX, sizeY){
 
 	this.hintCellArray = new Array();
 	this.selectNum = 0;
-	this.cellOld;
 }
 
 Board.prototype = Object.create(Pixim.Container.prototype);
@@ -132,7 +131,7 @@ Board.prototype.create = function(){
 			var cell = new Cell(isActive, x, y, cellWidth, cellHeight);
 			cell.setTexture(texture);
 			cell.on('down', function(cell){
-				self.selectCell(cell);
+				self.tapCell(cell);
 			});
 			//cell.setText(answer[y][x]);
 
@@ -149,8 +148,8 @@ Board.prototype.create = function(){
 Board.prototype.createInputBox = function(cell){
 	var self = this;
 	var answer = this.blueprint.answer;
-	self.inputBox.removeChildren();
-	var inputBox = self.inputBox.addChild(new InputBox(cell, 0, self.sizeY * 0.05 + self.sizeY));
+	this.containerInputBox.removeChildren();
+	var inputBox = this.containerInputBox.addChild(new InputBox(cell, 0, self.sizeY * 0.05 + self.sizeY));
 	inputBox.on('input', function(char, charOld){
 		if(char == charOld) return;
 		if(charOld == ''){
@@ -174,7 +173,7 @@ Board.prototype.createInputBox = function(cell){
 		}
 	});
 	inputBox.on('close', function(){
-		self.inputBox.removeChildren();
+		self.containerInputBox.removeChildren();
 		self.bufCell.setTexture(self.$.resources.images.back1);
 		self.bufCell = undefined;
 		if(self.hintCellArray.length > 0){
@@ -223,28 +222,48 @@ Board.prototype.checkAnswer = function(){
 	//クリア
 	this.emit('clear');
 }
-
+//終了処理
 Board.prototype.end = function(){
 	this.interactiveChildren = false;
-	this.inputBox.removeChildren();
+	this.containerInputBox.removeChildren();
 }
-
+//セルを選択したとき
 Board.prototype.selectCell = function(cell){
 	if(this.bufCell != cell){
 		//別のセルを選択した
 		if(this.bufCell !== undefined){
-			this.bufCell.setTexture(this.$.resources.images.back1);	
-			if(this.hintCellArray.length > 0){
-				for(var i = 0; i < this.hintCellArray.length; i++){
-					this.hintCellArray[i].setTexture(this.$.resources.images.back3);
-				}
-			}
+			this.bufCell.setTexture(this.$.resources.images.back1);
 		}
-		cell.setTexture(this.$.resources.images.back2);
 		this.bufCell = cell;
 	}
-}
+	if(this.hintCellArray.length > 0){
+		this.selectNum = 0;
+		for(var i = 0; i < this.hintCellArray.length; i++){
+			this.hintCellArray[i].setTexture(this.$.resources.images.back3);
+		}
+	}
 
+	//選択箇所の表示
+	cell.setTexture(this.$.resources.images.back2);
+
+	//キーボード作成
+	var inputBox;
+	this.containerInputBox.removeChildren();
+	inputBox = this.createInputBox(cell);
+
+	return inputBox;
+}
+//セルをタップで選択したとき
+Board.prototype.tapCell = function(cell){
+	if(this.hintCellArray.length > 0){
+		for(var i = this.hintCellArray.length; i > 0; i--){
+			var buf = this.hintCellArray.shift();
+			buf.setTexture(this.$.resources.images.back1);
+		}
+	}
+	this.selectCell(cell);
+}
+//カギをタップしたとき
 Board.prototype.selectHintCell = function(hint, axis){
 	//axis = parseInt(axis);
 
@@ -284,10 +303,8 @@ Board.prototype.selectHintCell = function(hint, axis){
 
 	//先頭を選択状態にする
 	var cell = this.hintCellArray[0];
-	this.selectCell(cell);
-	//キーボード追加
-	this.inputBox.removeChildren();
-	var inputBox = this.createInputBox(cell);
+	//矢印キーを使えるようにする
+	var inputBox = this.selectCell(cell);
 	if(axis == 0){
 		inputBox.on('left', function(){
 			cell.setTexture(images.back3);
@@ -390,7 +407,7 @@ var InputBox = function(cell, posX, posY){
 	//削除ボタン
 	var button = this.addChild(new Button(posX, posY + 50, '×'));
 	button.on('down', function(){
-		var charOld = self.text.text;
+		var charOld = self.cell.text.text;
 		self.cell.setText('');
 		if(self.bufButton !== undefined){
 			self.bufButton.charnum = 0;
@@ -420,6 +437,9 @@ InputBox.prototype = Object.create(Pixim.Container.prototype);
 
 InputBox.prototype.setCell = function(cell){
 	this.cell = cell;
+	if(this.bufButton != undefined){
+		this.bufButton.charnum = 0;
+	}
 }
 
 
