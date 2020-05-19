@@ -94,6 +94,10 @@ var Board = function($, blueprint, posX, posY, sizeX, sizeY){
 	this.nCell = 0;//入力できるセルの数
 	this.nAnswered = 0;//入力数
 	this.correctAnswer = 0;//正答数
+
+	this.hintCellArray = new Array();
+	this.selectNum = 0;
+	this.cellOld;
 }
 
 Board.prototype = Object.create(Pixim.Container.prototype);
@@ -128,43 +132,7 @@ Board.prototype.create = function(){
 			var cell = new Cell(isActive, x, y, cellWidth, cellHeight);
 			cell.setTexture(texture);
 			cell.on('down', function(cell){
-				if(self.bufCell != cell){
-					//別のセルを選択した
-					if(self.bufCell !== undefined){
-						self.bufCell.setTexture(self.$.resources.images.back1);
-					}
-					cell.setTexture(self.$.resources.images.back2);
-					self.bufCell = cell;
-					self.inputBox.removeChildren();
-					var inputBox = self.inputBox.addChild(new InputBox(cell, 0, self.sizeY * 0.05 + self.sizeY));
-					inputBox.on('input', function(char, charOld){
-						if(char == charOld) return;
-						if(charOld == ''){
-							//入力された
-							self.nAnswered++;
-						}
-						if(char == answer[cell.posY][cell.posX]){
-							//正解になった
-							self.correctAnswer++;
-							self.checkAnswer();
-						}
-						else if(charOld == answer[cell.posY][cell.posX]){
-							//間違いになった
-							self.correctAnswer--;
-						}
-					});
-					inputBox.on('delete', function(charOld){
-						if(charOld != ''){
-							//入力が取り消された
-							self.nAnswered--;
-						}
-					});
-					inputBox.on('close', function(){
-						self.inputBox.removeChildren();
-						self.bufCell.setTexture(self.$.resources.images.back1);
-						self.bufCell = undefined;
-					});
-				}
+				self.selectCell(cell);
 			});
 			//cell.setText(answer[y][x]);
 
@@ -177,6 +145,48 @@ Board.prototype.create = function(){
 	this.setHintNumber(this.blueprint.hintX);//横
 	this.setHintNumber(this.blueprint.hintY);//縦
 }
+//キーボード作成
+Board.prototype.createInputBox = function(cell){
+	var self = this;
+	var answer = this.blueprint.answer;
+	self.inputBox.removeChildren();
+	var inputBox = self.inputBox.addChild(new InputBox(cell, 0, self.sizeY * 0.05 + self.sizeY));
+	inputBox.on('input', function(char, charOld){
+		if(char == charOld) return;
+		if(charOld == ''){
+			//入力された
+			self.nAnswered++;
+		}
+		if(char == answer[cell.posY][cell.posX]){
+			//正解になった
+			self.correctAnswer++;
+		}
+		else if(charOld == answer[cell.posY][cell.posX]){
+			//間違いになった
+			self.correctAnswer--;
+		}
+		self.checkAnswer();
+	});
+	inputBox.on('delete', function(charOld){
+		if(charOld != ''){
+			//入力が取り消された
+			self.nAnswered--;
+		}
+	});
+	inputBox.on('close', function(){
+		self.inputBox.removeChildren();
+		self.bufCell.setTexture(self.$.resources.images.back1);
+		self.bufCell = undefined;
+		if(self.hintCellArray.length > 0){
+			for(var i = self.hintCellArray.length; i > 0; i--){
+				var cell = self.hintCellArray.shift();
+				cell.setTexture(self.$.resources.images.back1);
+			}
+		}
+	});
+
+	return inputBox;
+}
 //小さい数字を入れる
 Board.prototype.setHintNumber = function(hint){
 	for(var i = 0; i < hint.length; i++){
@@ -187,16 +197,17 @@ Board.prototype.setHintNumber = function(hint){
 		cell.setTextNum(num);
 	}
 }
-
+//全てのセルが正しいかをチェックする
 Board.prototype.checkAnswer = function(){
 	//回答数が満たない
 	if(this.nCell > this.nAnswered) return;
-
+/*
 	//正答数が満たない
 	if(this.nCell > this.correctAnswer){
 		this.emit('error');
 		return;
 	}
+*/
 /*
 	var answer = this.blueprint.answer;
 	for(var y = 0; y < answer.length; y++){
@@ -216,6 +227,99 @@ Board.prototype.checkAnswer = function(){
 Board.prototype.end = function(){
 	this.interactiveChildren = false;
 	this.inputBox.removeChildren();
+}
+
+Board.prototype.selectCell = function(cell){
+	if(this.bufCell != cell){
+		//別のセルを選択した
+		if(this.bufCell !== undefined){
+			this.bufCell.setTexture(this.$.resources.images.back1);	
+			if(this.hintCellArray.length > 0){
+				for(var i = 0; i < this.hintCellArray.length; i++){
+					this.hintCellArray[i].setTexture(this.$.resources.images.back3);
+				}
+			}
+		}
+		cell.setTexture(this.$.resources.images.back2);
+		this.bufCell = cell;
+	}
+}
+
+Board.prototype.selectHintCell = function(hint, axis){
+	//axis = parseInt(axis);
+
+	var self = this;
+
+	var x = hint.x - 1;
+	var y = hint.y - 1;
+	var images = this.$.resources.images;
+
+	//全要素削除
+	if(this.hintCellArray.length > 0){
+		for(var i = this.hintCellArray.length; i > 0; i--){
+			var cell = this.hintCellArray.shift();
+			cell.setTexture(images.back1);
+		}
+	}
+
+	//ヌル文字に当たるか端に出るまで処理する
+	if(axis == 0){
+		//X軸方向
+		for(var i = x; (i < this.cellArray[y].length); i++){
+			if(this.cellArray[y][i].isActive == false) break;
+			var cell = this.cellArray[y][i];
+			cell.setTexture(images.back3);
+			this.hintCellArray.push(cell);
+		}
+	}
+	else{
+		//Y軸方向
+		for(var i = y; (i < this.cellArray.length); i++){
+			if(this.cellArray[i][x].isActive == false) break;
+			var cell = this.cellArray[i][x];
+			cell.setTexture(images.back3);
+			this.hintCellArray.push(cell);
+		}
+	}
+
+	//先頭を選択状態にする
+	var cell = this.hintCellArray[0];
+	this.selectCell(cell);
+	//キーボード追加
+	this.inputBox.removeChildren();
+	var inputBox = this.createInputBox(cell);
+	if(axis == 0){
+		inputBox.on('left', function(){
+			cell.setTexture(images.back3);
+			self.selectNum = ((self.selectNum - 1) + self.hintCellArray.length) % self.hintCellArray.length;
+			cell = self.hintCellArray[self.selectNum];
+			cell.setTexture(images.back2);
+			inputBox.setCell(cell);
+		});
+		inputBox.on('right', function(){
+			cell.setTexture(images.back3);
+			self.selectNum = ((self.selectNum + 1) + self.hintCellArray.length) % self.hintCellArray.length;
+			cell = self.hintCellArray[self.selectNum];
+			cell.setTexture(images.back2);
+			inputBox.setCell(cell);
+		});
+	}
+	else{
+		inputBox.on('left', function(){
+			cell.setTexture(images.back3);
+			self.selectNum = ((self.selectNum - 1) + self.hintCellArray.length) % self.hintCellArray.length;
+			cell = self.hintCellArray[self.selectNum];
+			cell.setTexture(images.back2);
+			inputBox.setCell(cell);
+		});
+		inputBox.on('right', function(){
+			cell.setTexture(images.back3);
+			self.selectNum = ((self.selectNum + 1) + self.hintCellArray.length) % self.hintCellArray.length;
+			cell = self.hintCellArray[self.selectNum];
+			cell.setTexture(images.back2);
+			inputBox.setCell(cell);
+		});
+	}
 }
 
 
@@ -266,6 +370,8 @@ var InputBox = function(cell, posX, posY){
 
 	var self = this;
 
+	this.cell = cell;
+
 	for(var i = 0; i < CharSet.length; i++){
 		var button = this.addChild(new Button((25+1)*i + posX, posY, CharSet[i][0], CharSet[i]));
 		button.on('down', function(objButton){
@@ -275,34 +381,52 @@ var InputBox = function(cell, posX, posY){
 				objButton.charnum = 0;//文字０番目をセット
 			}
 			var char = objButton.charset[objButton.charnum % objButton.charset.length];
-			var charOld = cell.text.text;
-			cell.setText(char);
+			var charOld = self.cell.text.text;
+			self.cell.setText(char);
 			objButton.charnum++;
 			self.emit('input', char, charOld);
 		});
 	}
 	//削除ボタン
-	var button = this.addChild(new Button(posX, posY + 50,'×'));
+	var button = this.addChild(new Button(posX, posY + 50, '×'));
 	button.on('down', function(){
-		var charOld = cell.text.text;
-		cell.setText('');
+		var charOld = self.text.text;
+		self.cell.setText('');
 		if(self.bufButton !== undefined){
 			self.bufButton.charnum = 0;
 		}
 		self.emit('delete', charOld);
 	});
 	//閉じるボタン
-	var button = this.addChild(new Button(posX + 100, posY + 50,'閉'));
+	var button = this.addChild(new Button(posX + 100, posY + 50, '閉'));
 	button.on('down', function(){
 		self.emit('close');
 	});
+
+	//←ボタン
+	var button = this.addChild(new Button(posX + 200, posY + 50, '←'));
+	button.on('down', function(){
+		self.emit('left');
+	});
+	//→ボタン
+	var button = this.addChild(new Button(posX + 250, posY + 50, '→'));
+	button.on('down', function(){
+		self.emit('right');
+	});
+
 }
 
 InputBox.prototype = Object.create(Pixim.Container.prototype);
 
+InputBox.prototype.setCell = function(cell){
+	this.cell = cell;
+}
+
 
 var HintBox = function($, key, hint, X, Y, width, height){
 	Pixim.Container.call(this);
+
+	var self = this;
 
 	this.$ = $
 	this.hint = hint;
@@ -311,12 +435,14 @@ var HintBox = function($, key, hint, X, Y, width, height){
 
 	var fontsize = height / hint.length * 0.8;
 
+	//背景
 	this.sprite = this.addChild(new PIXI.Sprite(this.$.resources.images.back1));
 	this.sprite.x = 0;
 	this.sprite.y = 0;
 	this.sprite.width = width;
 	this.sprite.height = height;
 
+	//文字
 	var style = {
 		fontSize: fontsize,
 		fill: 0xffffff,
@@ -324,15 +450,23 @@ var HintBox = function($, key, hint, X, Y, width, height){
 	var textPosX = width * 0.05;
 	var textPosY = height * 0.05;
 	this.textContainer = this.addChild(new Pixim.Container());
+
+	//種類
 	var textName = this.textContainer.addChild(new PIXI.Text(key, style));
 	textName.x = textPosX;
 	textName.y = textPosY;
+	//カギ
 	for(var i = 0; i < hint.length; i++){
 		var num = hint[i].num;
 		var key = hint[i].key;
 		var text = this.textContainer.addChild(new PIXI.Text(num+","+key,style));
 		text.x = textPosX;
 		text.y = fontsize * (i + 1) + textPosY;
+		text.num = i;
+		text.on('pointerdown', function(){
+			self.emit('down', hint[this.num]);
+		});
+		text.interactive = true;
 	}
 }
 
@@ -461,12 +595,19 @@ Root.prototype.toIngame = function(blueprint){
 		self.header.viewStatus('CLEAR');
 		self.end();
 	});
+/*
 	this.board.on('error', function(){
 		self.header.viewStatus('ERROR');
 	});
-
+*/
 	this.hintboxX = this.containerIngame.addChild(new HintBox($, 'ヨコのカギ', blueprint.hintX, 0, 400, 450, 200));
+	this.hintboxX.on('down', function(obj){
+		self.board.selectHintCell(obj, 0);
+	});
 	this.hintboxY = this.containerIngame.addChild(new HintBox($, 'タテのカギ', blueprint.hintY, 0, 600, 450, 200));
+	this.hintboxY.on('down', function(obj){
+		self.board.selectHintCell(obj, 1);
+	});
 
 	this.watch = this.containerIngame.addChild(new Watch(300,0));
 	this.watch.on('update', function(time){
@@ -517,6 +658,7 @@ content.defineImages({
 	back0: 'images/back0.png',
 	back1: 'images/back1.png',
 	back2: 'images/back2.png',
+	back3: 'images/back3.png',
 });
 
 content.defineLibraries({
