@@ -85,6 +85,10 @@ var Board = function($, blueprint, posX, posY, sizeX, sizeY){
 	this.sizeX = sizeX;
 	this.sizeY = sizeY;
 
+	//セルの大きさを決める
+	this.cellWidth = this.sizeX / this.blueprint.answer[0].length;
+	this.cellHeight = this.sizeY / this.blueprint.answer.length;
+
 	this.bufCell;//選択されたセル記録用
 	this.containerInputBox = this.addChild(new Pixim.Container());//入力フォーム保持用
 
@@ -97,6 +101,7 @@ var Board = function($, blueprint, posX, posY, sizeX, sizeY){
 
 	this.hintCellArray = new Array();
 	this.selectNum = 0;
+	this.squareBorder = this.addChild(new SquareBorder(0xff0000));
 }
 
 Board.prototype = Object.create(Pixim.Container.prototype);
@@ -105,10 +110,6 @@ Board.prototype.create = function(){
 	var self = this;
 
 	var answer = this.blueprint.answer;
-
-	//セルの大きさを決める
-	var cellWidth = this.sizeX / answer[0].length;
-	var cellHeight = this.sizeY / answer.length;
 
 	//二次元配列で作る
 	for(var y = 0; y < answer.length; y++){
@@ -128,7 +129,7 @@ Board.prototype.create = function(){
 				isActive = false;
 				texture = this.$.resources.images.back0;
 			}
-			var cell = new Cell(isActive, x, y, cellWidth, cellHeight);
+			var cell = new Cell(isActive, x, y, this.cellWidth, this.cellHeight);
 			cell.setTexture(texture);
 			cell.on('down', function(cell){
 				self.tapCell(cell);
@@ -149,7 +150,7 @@ Board.prototype.createInputBox = function(cell){
 	var self = this;
 	var answer = this.blueprint.answer;
 	this.containerInputBox.removeChildren();
-	var inputBox = this.containerInputBox.addChild(new InputBox(cell, 0, self.sizeY * 0.05 + self.sizeY));
+	var inputBox = this.containerInputBox.addChild(new InputBox(cell, 0, self.sizeY * 0.1 + self.sizeY));
 	inputBox.on('input', function(char, charOld){
 		if(char == charOld) return;
 		if(charOld == ''){
@@ -237,9 +238,11 @@ Board.prototype.selectCell = function(cell){
 	}
 	if(this.hintCellArray.length > 0){
 		this.selectNum = 0;
+/*
 		for(var i = 0; i < this.hintCellArray.length; i++){
 			this.hintCellArray[i].setTexture(this.$.resources.images.back3);
 		}
+*/
 	}
 
 	//選択箇所の表示
@@ -255,10 +258,14 @@ Board.prototype.selectCell = function(cell){
 //セルをタップで選択したとき
 Board.prototype.tapCell = function(cell){
 	if(this.hintCellArray.length > 0){
+/*
 		for(var i = this.hintCellArray.length; i > 0; i--){
 			var buf = this.hintCellArray.shift();
 			buf.setTexture(this.$.resources.images.back1);
 		}
+*/
+		//枠線を消す
+		this.squareBorder.remove();
 	}
 	this.selectCell(cell);
 }
@@ -286,18 +293,30 @@ Board.prototype.selectHintCell = function(hint, axis){
 		for(var i = x; (i < this.cellArray[y].length); i++){
 			if(this.cellArray[y][i].isActive == false) break;
 			var cell = this.cellArray[y][i];
-			cell.setTexture(images.back3);
+			//cell.setTexture(images.back3);
 			this.hintCellArray.push(cell);
 		}
+		//枠線
+		var x = this.hintCellArray[0].x;
+		var y = this.hintCellArray[0].y;
+		var width = this.hintCellArray.length * this.cellWidth;
+		var height = this.cellHeight;
+		this.squareBorder.setRect(x, y, width, height);
 	}
 	else{
 		//Y軸方向
 		for(var i = y; (i < this.cellArray.length); i++){
 			if(this.cellArray[i][x].isActive == false) break;
 			var cell = this.cellArray[i][x];
-			cell.setTexture(images.back3);
+			//cell.setTexture(images.back3);
 			this.hintCellArray.push(cell);
 		}
+		//枠線
+		var x = this.hintCellArray[0].x;
+		var y = this.hintCellArray[0].y;
+		var width = this.cellWidth;
+		var height = this.hintCellArray.length * this.cellHeight;
+		this.squareBorder.setRect(x, y, width, height);
 	}
 
 	//先頭を選択状態にする
@@ -306,14 +325,14 @@ Board.prototype.selectHintCell = function(hint, axis){
 	var inputBox = this.selectCell(cell);
 	if(axis == 0){
 		inputBox.on('left', function(){
-			cell.setTexture(images.back3);
+			cell.setTexture(images.back1);
 			self.selectNum = ((self.selectNum - 1) + self.hintCellArray.length) % self.hintCellArray.length;
 			cell = self.hintCellArray[self.selectNum];
 			cell.setTexture(images.back2);
 			inputBox.setCell(cell);
 		});
 		inputBox.on('right', function(){
-			cell.setTexture(images.back3);
+			cell.setTexture(images.back1);
 			self.selectNum = ((self.selectNum + 1) + self.hintCellArray.length) % self.hintCellArray.length;
 			cell = self.hintCellArray[self.selectNum];
 			cell.setTexture(images.back2);
@@ -322,14 +341,14 @@ Board.prototype.selectHintCell = function(hint, axis){
 	}
 	else{
 		inputBox.on('left', function(){
-			cell.setTexture(images.back3);
+			cell.setTexture(images.back1);
 			self.selectNum = ((self.selectNum - 1) + self.hintCellArray.length) % self.hintCellArray.length;
 			cell = self.hintCellArray[self.selectNum];
 			cell.setTexture(images.back2);
 			inputBox.setCell(cell);
 		});
 		inputBox.on('right', function(){
-			cell.setTexture(images.back3);
+			cell.setTexture(images.back1);
 			self.selectNum = ((self.selectNum + 1) + self.hintCellArray.length) % self.hintCellArray.length;
 			cell = self.hintCellArray[self.selectNum];
 			cell.setTexture(images.back2);
@@ -346,7 +365,7 @@ var Button = function(X, Y, char, charset){
 	this.y = Y;
 
 	this.charset = charset;
-	this.charnum = 0;
+	//this.charnum = 0;
 
 	var width = 25;
 	var height = 25;
@@ -378,58 +397,180 @@ var Button = function(X, Y, char, charset){
 Button.prototype = Object.create(Pixim.Container.prototype);
 
 
+var CharButton = function(char){
+	Pixim.Container.call(this);
+
+	this.x = 0;
+	this.y = 0;
+
+	this.char = char;
+
+	var width = 25;
+	var height = 25;
+
+	this.graphics = this.addChild(new PIXI.Graphics());
+	this.graphics.beginFill(0x808080);
+	this.graphics.drawRect(0,0,width,height);
+	this.graphics.endFill();
+
+	var style = {
+		fontSize: 20,
+		fill: 0xffffff,
+	}
+	this.text = this.addChild(new PIXI.Text(char, style));
+	this.text.anchor.x = 0.5;
+	this.text.anchor.y = 0.5;
+	this.text.x = (width - 0) / 2;
+	this.text.y = (height - 0) / 2;
+}
+
+CharButton.prototype = Object.create(Pixim.Container.prototype);
+
+
 //指定されたセルに対する入力
 var InputBox = function(cell, posX, posY){
 	Pixim.Container.call(this);
 
+	this.x = posX;
+	this.y = posY;
+
 	this.bufButton;//押されたボタン記録用
+	this.containerAroundButton = new Pixim.Container();
 
 	var self = this;
 
 	this.cell = cell;
 
+	this.charnum = 0;
+
+	this.containerCharButton = this.addChild(new Pixim.Container());
+
 	for(var i = 0; i < CharSet.length; i++){
-		var button = this.addChild(new Button((25+1)*i + posX, posY, CharSet[i][0], CharSet[i]));
+		var button = this.containerCharButton.addChild(new Button((25+1)*i, 0, CharSet[i][0], CharSet[i]));
 		button.on('down', function(objButton){
 			//違うボタンを押したか
 			if(self.bufButton != objButton){
 				self.bufButton = objButton;//押されたボタンを記録
-				objButton.charnum = 0;//文字０番目をセット
+				self.charnum = 0;//文字０番目をセット
 			}
-			var char = objButton.charset[objButton.charnum % objButton.charset.length];
+			var char = objButton.charset[self.charnum % objButton.charset.length];
 			var charOld = self.cell.text.text;
 			self.cell.setText(char);
-			objButton.charnum++;
+			self.charnum++;
 			self.emit('input', char, charOld);
+
+			//self.containerAroundButton.removeChildren();
+			self.containerAroundButton.addChild(self.createAroundButton(objButton.charset, 25));
+			self.containerAroundButton.x = objButton.x;
+			self.containerAroundButton.y = objButton.y;
 		});
+		button.on('pointerup', function(){
+			self.containerAroundButton.removeChildren();
+		});
+		button.on('pointerupoutside', function(){
+			self.charnum = 0;
+			self.containerAroundButton.removeChildren();
+		});
+		this.replaceCharButton(i);
 	}
+
+	//濁点ボタン
+	var button = this.addChild(new CharButton('゛'));
+	button.x = 150;
+	button.y = 0;
+	button.on('pointerdown', function(){
+		var dakuten = '\u3099';//濁点（゛）
+		var charOld = self.getText();
+		var char = charOld.normalize('NFD');//分解
+		if(char[1] === undefined){
+			//何も結合していなかった
+			char = (char + dakuten);//濁点追加
+			char = char.normalize('NFC');//結合
+			if(char[1] !== undefined) return;//結合できなかった
+		}
+		else{
+			//何かが結合していた
+			if(char[1] == dakuten){
+				char = char[0];//濁点除去
+			}
+			else{
+				//濁点以外
+				char = (char[0] + dakuten);//濁点追加
+				char = char.normalize('NFC');//結合
+				//if(char[1] !== undefined) return;//結合できなかった
+			}
+		}
+		self.setText(char);
+		self.emit('input', char, charOld);
+	});
+	button.interactive = true;
+
+	//半濁点ボタン
+	var button = this.addChild(new CharButton('゜'));
+	button.x = 200;
+	button.y = 0;
+	button.on('pointerdown', function(){
+		var handakuten = '\u309a';
+		var charOld = self.getText();
+		var char = charOld.normalize('NFD');//分解
+		if(char[1] === undefined){
+			char = (char + handakuten);//半濁点追加
+			char = char.normalize('NFC');//結合
+			if(char[1] !== undefined) return;//結合できなかった
+		}
+		else{
+			if(char[1] == handakuten){
+				char = char[0];
+			}
+			else{
+				char = (char[0] + handakuten);
+				char = char.normalize('NFC');
+			}
+		}
+		self.setText(char);
+		self.emit('input', char, charOld);
+	});
+	button.interactive = true;
+
 	//削除ボタン
-	var button = this.addChild(new Button(posX, posY + 50, '×'));
-	button.on('down', function(){
-		var charOld = self.cell.text.text;
+	var button = this.addChild(new CharButton('×'));
+	button.x = 150;
+	button.y = 50;
+	button.on('pointerdown', function(){
+		var charOld = self.getText();//self.cell.text.text;
 		self.cell.setText('');
 		if(self.bufButton !== undefined){
 			self.bufButton.charnum = 0;
 		}
 		self.emit('delete', charOld);
 	});
+
 	//閉じるボタン
-	var button = this.addChild(new Button(posX + 100, posY + 50, '閉'));
-	button.on('down', function(){
+	var button = this.addChild(new CharButton('閉'));
+	button.x = 200;
+	button.y = 50;
+	button.on('pointerdown', function(){
 		self.emit('close');
 	});
 
 	//←ボタン
-	var button = this.addChild(new Button(posX + 200, posY + 50, '←'));
-	button.on('down', function(){
+	var button = this.addChild(new CharButton('←'));
+	button.x = 150;
+	button.y = 100;
+	button.on('pointerdown', function(){
 		self.emit('left');
 	});
+
 	//→ボタン
-	var button = this.addChild(new Button(posX + 250, posY + 50, '→'));
-	button.on('down', function(){
+	var button = this.addChild(new CharButton('→'));
+	button.x = 200;
+	button.y = 100;
+	button.on('pointerdown', function(){
 		self.emit('right');
 	});
 
+	this.addChild(this.containerAroundButton);
+	this.interactiveChildren = true;
 }
 
 InputBox.prototype = Object.create(Pixim.Container.prototype);
@@ -439,6 +580,48 @@ InputBox.prototype.setCell = function(cell){
 	if(this.bufButton != undefined){
 		this.bufButton.charnum = 0;
 	}
+}
+
+InputBox.prototype.getText = function(){
+	return this.cell.text.text;
+}
+
+InputBox.prototype.setText = function(text){
+	this.cell.setText(text);
+}
+
+InputBox.prototype.replaceCharButton = function(num){
+	num = parseInt(num);
+	if(num < 0 || num >= this.containerCharButton.length) return;
+
+	var button = this.containerCharButton.children[num];
+	button.x = parseInt(num % 3) * 50;
+	button.y = parseInt(num / 3) * 30;
+}
+
+//ボタンの上下左右に４つだけ作って配置する
+InputBox.prototype.createAroundButton = function(charset, range){
+	var container = new Pixim.Container();
+
+	var self = this;
+
+	for(var i = 1; i < 5; i++){
+		var button = container.addChild(new CharButton(charset[i]));
+		button.on('pointerup', function(){
+			var charOld = self.cell.text.text;
+			self.cell.setText(this.char);
+			self.emit('input', this.char, charOld);
+			//self.containerAroundButton.removeChildren();
+		});
+		button.interactive = true;
+	}
+
+	container.children[0].x = -range;//左
+	container.children[1].y = -range;//右
+	container.children[2].x = +range;//上
+	container.children[3].y = +range;//下
+
+	return container;
 }
 
 
@@ -584,6 +767,35 @@ var TextButton = function(text, X, Y, num){
 TextButton.prototype = Object.create(Pixim.Container.prototype);
 
 
+var SquareBorder = function(color){
+	Pixim.Container.call(this);
+
+	this.color = color;
+
+	this.containerGraphics = this.addChild(new Pixim.Container());
+	this.graphics = this.containerGraphics.addChild(new PIXI.Graphics());
+}
+
+SquareBorder.prototype = Object.create(Pixim.Container.prototype);
+
+SquareBorder.prototype.setRect = function(x, y, width, height){
+	this.x = x;
+	this.y = y;
+	this.containerGraphics.removeChildren();
+	this.graphics = this.containerGraphics.addChild(new PIXI.Graphics());
+	this.graphics.lineStyle(2, this.color);
+	this.graphics.moveTo(0, 0)
+	.lineTo(width, 0)
+	.lineTo(width, height)
+	.lineTo(0, height)
+	.lineTo(0, 0);
+}
+
+SquareBorder.prototype.remove = function(){
+	this.containerGraphics.removeChildren();
+}
+
+
 var Root = function($){
 	Pixim.Container.call(this);
 
@@ -595,6 +807,12 @@ var Root = function($){
 	this.containerOutgame = this.addChild(new Pixim.Container());
 
 	this.toOutgame();
+/*
+	this.sb = this.addChild(new SquareBorder(0, 0, 0xff0000));
+	this.sb.x = 100;
+	this.sb.y = 200;
+*/
+	//this.sb.setRect(0,0, 100,100);
 }
 
 Root.prototype = Object.create(Pixim.Container.prototype);
@@ -608,7 +826,7 @@ Root.prototype.toIngame = function(blueprint){
 
 	this.header = this.containerIngame.addChild(new Header());
 
-	this.board = this.containerIngame.addChild(new Board($, blueprint, 0, 0, 250, 250));
+	this.board = this.containerIngame.addChild(new Board($, blueprint, 50, 0, 200, 200));
 	this.board.create();
 	this.board.on('clear', function(){
 		self.header.viewStatus('CLEAR');
