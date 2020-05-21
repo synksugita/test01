@@ -544,6 +544,7 @@ var InputBox = function(cell, posX, posY){
 		}
 		self.emit('delete', charOld);
 	});
+	button.interactive = true;
 
 	//閉じるボタン
 	var button = this.addChild(new CharButton('閉'));
@@ -552,6 +553,7 @@ var InputBox = function(cell, posX, posY){
 	button.on('pointerdown', function(){
 		self.emit('close');
 	});
+	button.interactive = true;
 
 	//←ボタン
 	var button = this.addChild(new CharButton('←'));
@@ -560,6 +562,7 @@ var InputBox = function(cell, posX, posY){
 	button.on('pointerdown', function(){
 		self.emit('left');
 	});
+	button.interactive = true;
 
 	//→ボタン
 	var button = this.addChild(new CharButton('→'));
@@ -568,6 +571,7 @@ var InputBox = function(cell, posX, posY){
 	button.on('pointerdown', function(){
 		self.emit('right');
 	});
+	button.interactive = true;
 
 	this.addChild(this.containerAroundButton);
 	this.interactiveChildren = true;
