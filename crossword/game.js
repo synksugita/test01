@@ -89,11 +89,11 @@ var Board = function($, blueprint, posX, posY, sizeX, sizeY){
 	this.cellWidth = this.sizeX / this.blueprint.answer[0].length;
 	this.cellHeight = this.sizeY / this.blueprint.answer.length;
 
-	this.bufCell;//選択されたセル記録用
-	this.containerInputBox = this.addChild(new Pixim.Container());//入力フォーム保持用
-
 	this.cellContainer = this.addChild(new Pixim.Container());
 	this.cellArray = new Array();
+
+	this.bufCell;//選択されたセル記録用
+	this.containerInputBox = this.addChild(new Pixim.Container());//入力フォーム保持用
 
 	this.nCell = 0;//入力できるセルの数
 	this.nAnswered = 0;//入力数
@@ -178,10 +178,13 @@ Board.prototype.createInputBox = function(cell){
 		self.bufCell.setTexture(self.$.resources.images.back1);
 		self.bufCell = undefined;
 		if(self.hintCellArray.length > 0){
+			self.squareBorder.remove();
+/*
 			for(var i = self.hintCellArray.length; i > 0; i--){
 				var cell = self.hintCellArray.shift();
 				cell.setTexture(self.$.resources.images.back1);
 			}
+*/
 		}
 	});
 
@@ -258,16 +261,15 @@ Board.prototype.selectCell = function(cell){
 //セルをタップで選択したとき
 Board.prototype.tapCell = function(cell){
 	if(this.hintCellArray.length > 0){
-/*
 		for(var i = this.hintCellArray.length; i > 0; i--){
 			var buf = this.hintCellArray.shift();
 			buf.setTexture(this.$.resources.images.back1);
 		}
-*/
 		//枠線を消す
 		this.squareBorder.remove();
 	}
 	this.selectCell(cell);
+	this.emit('tap');
 }
 //カギをタップしたとき
 Board.prototype.selectHintCell = function(hint, axis){
@@ -367,12 +369,12 @@ var Button = function(X, Y, char, charset){
 	this.charset = charset;
 	//this.charnum = 0;
 
-	var width = 25;
-	var height = 25;
+	this.backWidth = 25;
+	this.backHeight = 25;
 
 	this.graphics = this.addChild(new PIXI.Graphics());
 	this.graphics.beginFill(0x808080);
-	this.graphics.drawRect(0,0,width,height);
+	this.graphics.drawRect(0,0,this.backWidth,this.backHeight);
 	this.graphics.endFill();
 
 	var style = {
@@ -382,16 +384,10 @@ var Button = function(X, Y, char, charset){
 	this.text = this.addChild(new PIXI.Text(char, style));
 	this.text.anchor.x = 0.5;
 	this.text.anchor.y = 0.5;
-	this.text.x = (width - 0) / 2;
-	this.text.y = (height - 0) / 2;
+	this.text.x = (this.backWidth - 0) / 2;
+	this.text.y = (this.backHeight - 0) / 2;
 
-	this.on('pointerdown', function(){
-		this.emit('down', this);
-	});
-	this.on('pointerup', function(){
-		this.emit('up', this);
-	});
-	this.interactive = true;
+	this.down = 0;
 }
 
 Button.prototype = Object.create(Pixim.Container.prototype);
@@ -405,12 +401,12 @@ var CharButton = function(char){
 
 	this.char = char;
 
-	var width = 25;
-	var height = 25;
+	this.backWidth = 25;
+	this.backHeight = 25;
 
 	this.graphics = this.addChild(new PIXI.Graphics());
 	this.graphics.beginFill(0x808080);
-	this.graphics.drawRect(0,0,width,height);
+	this.graphics.drawRect(0,0,this.backWidth,this.backHeight);
 	this.graphics.endFill();
 
 	var style = {
@@ -420,8 +416,8 @@ var CharButton = function(char){
 	this.text = this.addChild(new PIXI.Text(char, style));
 	this.text.anchor.x = 0.5;
 	this.text.anchor.y = 0.5;
-	this.text.x = (width - 0) / 2;
-	this.text.y = (height - 0) / 2;
+	this.text.x = (this.backWidth - 0) / 2;
+	this.text.y = (this.backHeight - 0) / 2;
 }
 
 CharButton.prototype = Object.create(Pixim.Container.prototype);
@@ -435,7 +431,6 @@ var InputBox = function(cell, posX, posY){
 	this.y = posY;
 
 	this.bufButton;//押されたボタン記録用
-	this.containerAroundButton = new Pixim.Container();
 
 	var self = this;
 
@@ -443,39 +438,76 @@ var InputBox = function(cell, posX, posY){
 
 	this.charnum = 0;
 
-	this.containerCharButton = this.addChild(new Pixim.Container());
+	this.containerButton = this.addChild(new Pixim.Container());
+	this.containerCharButton = this.containerButton.addChild(new Pixim.Container());
+	this.containerSysButton = this.containerButton.addChild(new Pixim.Container());
+	this.containerBack = this.addChild(new Pixim.Container());
+	this.containerAroundButton = new Pixim.Container();
+	this.squareBorder = this.addChild(new SquareBorder(0xff0000));
 
 	for(var i = 0; i < CharSet.length; i++){
 		var button = this.containerCharButton.addChild(new Button((25+1)*i, 0, CharSet[i][0], CharSet[i]));
-		button.on('down', function(objButton){
+		button.on('pointerdown', function(){
+			this.down = 1;
 			//違うボタンを押したか
-			if(self.bufButton != objButton){
-				self.bufButton = objButton;//押されたボタンを記録
+			if(self.bufButton != this){
+				self.bufButton = this;//押されたボタンを記録
 				self.charnum = 0;//文字０番目をセット
 			}
-			var char = objButton.charset[self.charnum % objButton.charset.length];
+			var char = this.charset[self.charnum % this.charset.length];
 			var charOld = self.cell.text.text;
 			self.cell.setText(char);
 			self.charnum++;
 			self.emit('input', char, charOld);
 
 			//self.containerAroundButton.removeChildren();
-			self.containerAroundButton.addChild(self.createAroundButton(objButton.charset, 25));
-			self.containerAroundButton.x = objButton.x;
-			self.containerAroundButton.y = objButton.y;
+			self.createAroundButton(this.charset, 25);
+			self.containerAroundButton.x = this.x;
+			self.containerAroundButton.y = this.y;
+
+			var back = self.containerBack.addChild(new PIXI.Graphics());
+			back.beginFill(0,0.5);
+			back.drawRect(0,0,300,300);
+			back.endFill();
 		});
 		button.on('pointerup', function(){
+			this.down = 0;
+			self.squareBorder.remove();
 			self.containerAroundButton.removeChildren();
+			self.containerBack.removeChildren();
 		});
-		button.on('pointerupoutside', function(){
+		button.on('pointerupoutside', function(obj){
+			this.down = 0;
+			self.squareBorder.remove();
+			if(self.containerAroundButton.children.length <= 0) return;
+			var num;
+			num = self.checkAroundButtonNum(this, obj.data.global);
+			var charOld = self.cell.text.text;
+			var char = self.containerAroundButton.children[num].char;
+			self.cell.setText(char);
+			self.emit('input', char, charOld);
 			self.charnum = 0;
 			self.containerAroundButton.removeChildren();
+			self.containerBack.removeChildren();
 		});
+		button.on('pointermove', function(obj){
+			if(this.down == 0) return;
+			if(self.containerAroundButton.children.length <= 0) return;
+			var num;
+			num = self.checkAroundButtonNum(this, obj.data.global);
+			var button = self.containerAroundButton.children[num];
+			var x = self.containerAroundButton.x + button.x;
+			var y = self.containerAroundButton.y + button.y;
+			var width = button.width;
+			var height = button.height;
+			self.squareBorder.setRect(x, y, width, height);
+		});
+		button.interactive = true;
 		this.replaceCharButton(i);
 	}
 
 	//濁点ボタン
-	var button = this.addChild(new CharButton('゛'));
+	var button = this.containerSysButton.addChild(new CharButton('゛'));
 	button.x = 150;
 	button.y = 0;
 	button.on('pointerdown', function(){
@@ -506,7 +538,7 @@ var InputBox = function(cell, posX, posY){
 	button.interactive = true;
 
 	//半濁点ボタン
-	var button = this.addChild(new CharButton('゜'));
+	var button = this.containerSysButton.addChild(new CharButton('゜'));
 	button.x = 200;
 	button.y = 0;
 	button.on('pointerdown', function(){
@@ -533,7 +565,7 @@ var InputBox = function(cell, posX, posY){
 	button.interactive = true;
 
 	//削除ボタン
-	var button = this.addChild(new CharButton('×'));
+	var button = this.containerSysButton.addChild(new CharButton('×'));
 	button.x = 150;
 	button.y = 50;
 	button.on('pointerdown', function(){
@@ -547,7 +579,7 @@ var InputBox = function(cell, posX, posY){
 	button.interactive = true;
 
 	//閉じるボタン
-	var button = this.addChild(new CharButton('閉'));
+	var button = this.containerSysButton.addChild(new CharButton('閉'));
 	button.x = 200;
 	button.y = 50;
 	button.on('pointerdown', function(){
@@ -556,7 +588,7 @@ var InputBox = function(cell, posX, posY){
 	button.interactive = true;
 
 	//←ボタン
-	var button = this.addChild(new CharButton('←'));
+	var button = this.containerSysButton.addChild(new CharButton('←'));
 	button.x = 150;
 	button.y = 100;
 	button.on('pointerdown', function(){
@@ -565,7 +597,7 @@ var InputBox = function(cell, posX, posY){
 	button.interactive = true;
 
 	//→ボタン
-	var button = this.addChild(new CharButton('→'));
+	var button = this.containerSysButton.addChild(new CharButton('→'));
 	button.x = 200;
 	button.y = 100;
 	button.on('pointerdown', function(){
@@ -605,12 +637,10 @@ InputBox.prototype.replaceCharButton = function(num){
 
 //ボタンの上下左右に４つだけ作って配置する
 InputBox.prototype.createAroundButton = function(charset, range){
-	var container = new Pixim.Container();
-
 	var self = this;
 
 	for(var i = 1; i < 5; i++){
-		var button = container.addChild(new CharButton(charset[i]));
+		var button = this.containerAroundButton.addChild(new CharButton(charset[i]));
 		button.on('pointerup', function(){
 			var charOld = self.cell.text.text;
 			self.cell.setText(this.char);
@@ -620,12 +650,45 @@ InputBox.prototype.createAroundButton = function(charset, range){
 		button.interactive = true;
 	}
 
-	container.children[0].x = -range;//左
-	container.children[1].y = -range;//右
-	container.children[2].x = +range;//上
-	container.children[3].y = +range;//下
+	this.containerAroundButton.children[0].x = -range;//左
+	this.containerAroundButton.children[1].y = -range;//右
+	this.containerAroundButton.children[2].x = +range;//上
+	this.containerAroundButton.children[3].y = +range;//下
+}
 
-	return container;
+InputBox.prototype.checkAroundButtonNum = function(obj, pointer){
+	var num;
+	var ox = obj.transform.worldTransform.tx + (obj.width / 2);
+	var oy = obj.transform.worldTransform.ty + (obj.height / 2);
+	var px = pointer.x;
+	var py = pointer.y;
+	var vx = px - ox;
+	var vy = py - oy;
+	if(vx > vy){
+		var ax = Math.abs(vx);
+		var ay = Math.abs(vy);
+		if(ax > ay){
+			//2
+			num = 2;
+		}
+		else{
+			//1
+			num = 1;
+		}
+	}
+	else{
+		var ax = Math.abs(vx);
+		var ay = Math.abs(vy);
+		if(ax > ay){
+			//0
+			num = 0;
+		}
+				else{
+			//3
+			num = 3;
+		}
+	}
+	return num;
 }
 
 
@@ -647,6 +710,8 @@ var HintBox = function($, key, hint, X, Y, width, height){
 	this.sprite.y = 0;
 	this.sprite.width = width;
 	this.sprite.height = height;
+
+	this.containerGraphics = this.addChild(new Pixim.Container());
 
 	//文字
 	var style = {
@@ -670,6 +735,7 @@ var HintBox = function($, key, hint, X, Y, width, height){
 		text.y = fontsize * (i + 1) + textPosY;
 		text.num = i;
 		text.on('pointerdown', function(){
+			self.createGraphics(this.x, this.y, fontsize * this.text.length, fontsize);
 			self.emit('down', hint[this.num]);
 		});
 		text.interactive = true;
@@ -677,6 +743,20 @@ var HintBox = function($, key, hint, X, Y, width, height){
 }
 
 HintBox.prototype = Object.create(Pixim.Container.prototype);
+
+HintBox.prototype.createGraphics = function(x, y, width, height){
+	this.containerGraphics.removeChildren();
+	var back = this.containerGraphics.addChild(new PIXI.Graphics());
+	back.x = x;
+	back.y = y;
+	back.beginFill(0xffff00, 0.25);
+	back.drawRect(0, 0, width, height);
+	back.endFill();
+}
+
+HintBox.prototype.removeGraphics = function(){
+	this.containerGraphics.removeChildren();
+}
 
 
 var Header = function(){
@@ -811,12 +891,6 @@ var Root = function($){
 	this.containerOutgame = this.addChild(new Pixim.Container());
 
 	this.toOutgame();
-/*
-	this.sb = this.addChild(new SquareBorder(0, 0, 0xff0000));
-	this.sb.x = 100;
-	this.sb.y = 200;
-*/
-	//this.sb.setRect(0,0, 100,100);
 }
 
 Root.prototype = Object.create(Pixim.Container.prototype);
@@ -841,12 +915,20 @@ Root.prototype.toIngame = function(blueprint){
 		self.header.viewStatus('ERROR');
 	});
 */
+	this.board.on('tap', function(){
+		self.hintboxX.removeGraphics();
+		self.hintboxY.removeGraphics();
+	});
+
 	this.hintboxX = this.containerIngame.addChild(new HintBox($, 'ヨコのカギ', blueprint.hintX, 0, 400, 450, 200));
 	this.hintboxX.on('down', function(obj){
+		self.hintboxY.removeGraphics();
 		self.board.selectHintCell(obj, 0);
 	});
+
 	this.hintboxY = this.containerIngame.addChild(new HintBox($, 'タテのカギ', blueprint.hintY, 0, 600, 450, 200));
 	this.hintboxY.on('down', function(obj){
+		self.hintboxX.removeGraphics();
 		self.board.selectHintCell(obj, 1);
 	});
 
