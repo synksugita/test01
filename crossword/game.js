@@ -83,6 +83,12 @@ var Board = function($, blueprint, sizeX, sizeY){
 	this.sizeX = sizeX;
 	this.sizeY = sizeY;
 
+	var x = blueprint.answer[0].length;
+	var y = blueprint.answer.length;
+	var big = (x > y) ? x : y;
+	this.scale.x = big / x;
+	this.scale.y = big / y;
+
 	//セルの大きさを決める
 	this.cellWidth = this.sizeX / this.blueprint.answer[0].length;
 	this.cellHeight = this.sizeY / this.blueprint.answer.length;
@@ -733,6 +739,36 @@ var HintBox = function($, key, hint, width, height){
 	graphics.drawRect(0,0,width,height);
 	graphics.endFill();
 
+	var down = false;
+	var downpointY;
+	var containerY;
+	function pointerDown(obj){
+		down = true;
+		downpointY = obj.data.global.y;
+		containerY = self.textContainer.y;
+	}
+	function pointerMove(obj){
+		if(down != true) return;
+		var posY = containerY + (obj.data.global.y - downpointY);
+		textScrollY(posY);
+	}
+	function pointerUp(){
+		down = false;
+	}
+	graphics.on('pointerdown', function(obj){
+		pointerDown(obj);
+	});
+	graphics.on('pointermove', function(obj){
+		pointerMove(obj);
+	});
+	graphics.on('pointerup', function(){
+		pointerUp();
+	});
+	graphics.on('pointerupoutside', function(){
+		pointerUp();
+	});
+	graphics.interactive = true;
+
 	this.containerGraphics = this.addChild(new Pixim.Container());
 
 	//文字
@@ -776,7 +812,7 @@ var HintBox = function($, key, hint, width, height){
 		var t = c.children[c.children.length-1];
 		var h = t.y + t.height;
 		if(h < height) return;
-		c.y += value;
+		c.y = value;
 		//移動制限
 		if(c.y > keyPosY){
 			c.y = keyPosY;
@@ -789,7 +825,7 @@ var HintBox = function($, key, hint, width, height){
 	}
 
 	//カギ
-	var space = 10;
+	var space = 20;
 	var h = 0;
 	for(var i = 0; i < hint.length; i++){
 		var num = hint[i].num;
@@ -797,17 +833,18 @@ var HintBox = function($, key, hint, width, height){
 		var text = this.textContainer.addChild(new PIXI.Text(num+","+key,style));
 		text.x = 0;
 		text.y = h;
-		h += text.height;
+		h += text.height + space;
 		text.num = i;
-		text.on('pointerdown', function(){
+		text.on('pointerdown', function(obj){
 			var c = self.textContainer;
 			self.createGraphics(c.x + this.x, c.y + this.y, this.width, this.height);
 			self.emit('down', hint[this.num]);
+
 		});
 		text.interactive = true;
 	}
 	textVisible();
-
+/*
 	var button = this.addChild(new CharButton('↑'));
 	button.x = 0;
 	button.y = height;
@@ -823,6 +860,7 @@ var HintBox = function($, key, hint, width, height){
 		textScrollY(-10);
 	});
 	button.interactive = true;
+*/
 }
 
 HintBox.prototype = Object.create(Pixim.Container.prototype);
@@ -839,6 +877,10 @@ HintBox.prototype.createGraphics = function(x, y, width, height){
 
 HintBox.prototype.removeGraphics = function(){
 	this.containerGraphics.removeChildren();
+}
+
+HintBox.prototype.setInteractive = function(flag){
+	this.interactive = flag;
 }
 
 HintBox.prototype.end = function(){
@@ -1045,9 +1087,11 @@ Root.prototype.toIngame = function(blueprint){
 	button.y = $.height - 30;
 	button.on('pointerdown', function(){
 		if(self.containerPopup.children.length > 0){
+			self.setInteractive(true);
 			self.containerPopup.removeChildren();
 		}
 		else{
+			self.setInteractive(false);
 			self.popup();
 		}
 	});
@@ -1081,6 +1125,12 @@ Root.prototype.end = function(){
 	this.hintboxY.end();
 }
 
+Root.prototype.setInteractive = function(flag){
+	this.board.interactiveChildren = flag;
+	this.hintboxX.interactiveChildren = flag;
+	this.hintboxY.interactiveChildren = flag;
+}
+
 Root.prototype.popup = function(){
 	var self = this;
 
@@ -1102,6 +1152,7 @@ Root.prototype.popup = function(){
 	t1.x = 20;
 	t1.y = 100;
 	t1.on('pointerdown', function(){
+		self.setInteractive(true);
 		self.containerPopup.removeChildren();
 	});
 	t1.interactive = true;
@@ -1110,6 +1161,7 @@ Root.prototype.popup = function(){
 	t2.x = 120;
 	t2.y = 100;
 	t2.on('pointerdown', function(){
+		self.setInteractive(false);
 		self.containerPopup.removeChildren();
 		self.watch.end();
 		self.toOutgame();
