@@ -33,23 +33,41 @@ function Ingame($){
 	var board;
 	var keyboard;
 
+	var isClear = false;
+
+	var g = new PIXI.Graphics();
+	g.beginFill(0,0.5);
+	g.drawRect(0,0,$.width,$.height);
+	g.endFill();
+	g.visible = false;
+
 	var style = {
 		fontSize:20,
 		fill:0xffffff,
 	}
 
+	var t = new PIXI.Text('CLEAR', style);
+	t.visible = false;
+
 	function setInteractive(flag){
+		if(isClear == true) flag = false;
 		board.interactiveChildren = flag;
 		keyboard.interactiveChildren = flag;
 	}
 
+	var popflag = false;
 	function popupVisible(flag){
+		popflag = flag;
+		g.visible = flag;
+		if(isClear == true) t.visible = flag;
 		popup.visible = flag;
 		popup.interactiveChildren = flag;
+		setInteractive((flag != true));
 	}
 
-	var popflag = false;
 	function create(blueprint){
+		isClear = false;
+
 		var b = new TextButton('戻', style);
 		b.x = $.width - 50;
 		b.y = $.height - 50;
@@ -57,7 +75,7 @@ function Ingame($){
 		b.g.drawRect(0,0,b.t.width,b.t.height);
 		b.g.endFill();
 		b.on('pointerdown', function(){
-			popupVisible(true);
+			popupVisible((popflag != true));
 		});
 		b.interactive = true;
 
@@ -65,18 +83,20 @@ function Ingame($){
 		popup.x = 100;
 		popup.y = 100;
 		popup.on('select', function(flag){
+			popupVisible(false);
 			if(flag == true){
-				popupVisible(false);
+				//self.intaractiveChildren = true;
 			}
 			else{
 				self.emit('end');
 			}
 		});
-		popupVisible(false);
 
 		board = new Board($, blueprint);
 		board.on('end', function(){
-			self.emit('end');
+			isClear = true;
+			popupVisible(true);
+			//self.emit('end');
 		});
 
 		keyboard = new KeyBoard();
@@ -95,11 +115,18 @@ function Ingame($){
 			board.emit('handakuten');
 		});
 
+		t.x = popup.x + 50;
+		t.y = popup.y + 20;
+
+		popupVisible(false);
+
 
 		self.addChild(board);
 		self.addChild(keyboard);
 		self.addChild(b);
+		self.addChild(g);
 		self.addChild(popup);
+		self.addChild(t);
 	}
 
 	function release(){
@@ -183,18 +210,51 @@ function Board($, blueprint){
 	hintboxY.x = $.width/2;
 	hintboxY.y = height;
 
+	var selectedHint;
+	var selectedKey;
+	function selectKey(hint, key){
+		if(selectedKey !== undefined){
+			if(selectedKey == key){
+				selectedHint.emit('deselectKey');
+				field.emit('deselect');
+				//selectedHint = undefined;
+				selectedKey = undefined;
+				return;
+			}
+		}
+		selectedHint = hint;
+		selectedKey = key;
+	}
+
 	field.on('end', function(){
-		self.emit('emit');
+		self.emit('end');
+	});
+	field.on('tapCell', function(){
+		selectKey(selectedHint, selectedKey);
+		//hintboxX.emit('deselectKey');
+		//hintboxY.emit('deselectKey');
 	});
 
 	hintboxX.on('select', function(key){
-		hintboxY.emit('deselect');
+		hintboxY.emit('deselectKey');
 		field.emit('selectKeyX', key.num);
+		selectKey(this, key);
+	});
+	hintboxX.on('scroll', function(){
+		this.emit('deselectKey');
+		hintboxY.emit('deselectKey');
+		field.emit('deselect');
 	});
 
 	hintboxY.on('select', function(key){
-		hintboxX.emit('deselect');
+		hintboxX.emit('deselectKey');
 		field.emit('selectKeyY', key.num);
+		selectKey(this, key);
+	});
+	hintboxY.on('scroll', function(){
+		this.emit('deselectKey');
+		hintboxX.emit('deselectKey');
+		field.emit('deselect');
 	});
 
 
@@ -223,6 +283,12 @@ Board.prototype = Object.create(Pixim.Container.prototype);
 function Field(blueprint, width, height){
 	Pixim.Container.call(this);
 
+	var self = this;
+
+	var nCell = 0;
+	var nAnswered = 0;
+	var nAnswer = 0;
+
 	var listLine = new PIXI.Graphics();
 	var cellColor = new PIXI.Graphics();
 
@@ -249,45 +315,37 @@ function Field(blueprint, width, height){
 	}
 
 	function selectCell(cell){
+		if(cell.isActive == false) return;
+/*
 		if(selectedCell !== undefined){
 			if(selectedCell == cell){
-				cellColor.clear();
-				selectedCell = undefined;
-			}
-			else{
-				cellOnColor(cell);
+				deselect();
+				return;
 			}
 		}
-		else{
-			cellOnColor(cell);
-		}
-
+*/
+		cellOnColor(cell);
 		cell.emit('select');
 		selectedCell = cell;
 	}
 
 	function tapCell(cell){
-		selectPos = 0;
+		self.emit('tapCell');
 		listLine.clear();
 		selectCell(cell);
 	}
 
 	function selectList(list){
+/*
 		if(selectedList !== undefined){
 			if(selectedList == list){
-				listLine.clear();
-				cellColor.clear();
-				selectedList = undefined;
-				selectedCell = undefined;
+				deselect();
 				return;
 			}
-			else{
-				listOnLine(list);
-			}
 		}
-		else{
-			listOnLine(list);
-		}
+*/
+
+		listOnLine(list);
 
 		selectedList = list;
 		selectPos = 0;
@@ -302,24 +360,40 @@ function Field(blueprint, width, height){
 		selectList(listY[num]);
 	});
 
-	this.on('deselect', function(){
+	function deselect(){
 		selectedCell = undefined;
 		selectedList = undefined;
 		cellColor.clear();
 		listLine.clear();
+	}
+
+	this.on('deselect', function(){
+		deselect();
 	});
 
 	var containerCell = new Pixim.Container();
 	var arrayCell = new Array();
 
 	var answer = blueprint.answer;
+
 	var big = (answer[0].length > answer.length) ? answer[0].length : answer.length;
 	var cellWidth = width / big;
 	var cellHeight = height / big;
+	if(answer[0].length > answer.length){
+		containerCell.y = Math.abs((answer[0].length - answer.length) / 2 * cellHeight);
+	}
+	else{
+		containerCell.x = Math.abs((answer[0].length - answer.length) / 2 * cellHeight);
+	}
+	listLine.x = containerCell.x;
+	listLine.y = containerCell.y;
+	cellColor.x = containerCell.x;
+	cellColor.y = containerCell.y;
 	for(var y = 0; y < answer.length; y++){
 		var line = new Array();
 		for(var x = 0; x < answer[y].length; x++){
 			var isActive = (answer[y][x] == '') ? false : true;
+			if(isActive == true) nCell++;
 			var cell = new Cell(cellWidth, cellHeight, isActive);
 			cell.x = cellWidth * x;
 			cell.y = cellHeight * y;
@@ -378,9 +452,39 @@ function Field(blueprint, width, height){
 		});
 	}
 
+	function checkAnswer(){
+		if(nCell > nAnswered) return;
+		else if(nAnswered > nAnswer) return;
+		self.emit('end');
+console.log('end');
+	}
+
+	function inputCell(char){
+		//if(selectedCell === undefined) return;
+		var charOld = selectedCell.char.text;
+		if(charOld == char) return console.log(false);
+		var x = selectedCell.x / cellWidth;
+		var y = selectedCell.y / cellHeight;
+		if(charOld == ''){
+			nAnswered++;
+		}
+		else if(char == ''){
+			nAnswered--;
+		}
+		if(char == answer[y][x]){
+			nAnswer++;
+		}
+		else if(charOld == answer[y][x]){
+			nAnswer--;
+		}
+		checkAnswer();
+
+		selectedCell.emit('setText', char);
+	}
+
 	this.on('input', function(char){
 		if(selectedCell === undefined) return;
-		selectedCell.emit('setText', char);
+		inputCell(char);
 	});
 	this.on('selectMove', function(move){
 		if(selectedList === undefined) return;
@@ -408,7 +512,7 @@ function Field(blueprint, width, height){
 				char = char.normalize('NFC');
 			}
 		}
-		selectedCell.emit('setText', char);
+		inputCell(char);
 	});
 	this.on('handakuten', function(){
 		if(selectedCell === undefined) return;
@@ -429,7 +533,7 @@ function Field(blueprint, width, height){
 				char = char.normalize('NFC');
 			}
 		}
-		selectedCell.emit('setText', char);
+		inputCell(char);
 	});
 
 
@@ -447,7 +551,7 @@ function Cell(width, height, isActive){
 	var self = this;
 
 	//if(isActive === undefined) return;
-	//this.isActive = isActive;
+	this.isActive = isActive;
 
 	var backcolor;
 	if(isActive == true){
@@ -579,7 +683,7 @@ function Hintbox(hint, title, width, height){
 		move = true;
 		var y = containerY + (obj.data.global.y - pointerY);
 		textScroll(y);
-		deselectKey();
+		self.emit('scroll');
 	});
 	this.on('pointerup', function(){
 		down = false;
@@ -607,7 +711,7 @@ function Hintbox(hint, title, width, height){
 		marker.clear();
 	}
 
-	this.on('deselect', function(){
+	this.on('deselectKey', function(){
 		deselectKey();
 	})
 
@@ -631,11 +735,11 @@ function KeyBoard(){
 	var charnum = 0;
 	function tapButton(button){
 		if(selectButton !== undefined){
-			if(selectButton == button){
+			if(selectButton != button){
 				charnum = 0;
 			}
 		}
-		self.emit('input', button.charset[charnum]);
+		self.emit('input', button.charset[charnum % button.charset.length]);
 		selectButton = button;
 		charnum++;
 	}
@@ -677,6 +781,7 @@ function KeyBoard(){
 		fontSize:20,
 		fill:0xffffff,
 	}
+	var selectedButton;
 	for(var i = 0; i < CharSet.length; i++){
 		var b = new CharsetButton(CharSet[i], style);
 		b.g.beginFill(0x808080);
@@ -685,6 +790,7 @@ function KeyBoard(){
 		b.x = 30 * i;
 		b.y = 0;
 		b.on('pointerdown', function(obj){
+			selectedButton = this;
 			createAroundButton(this);
 			down = true;
 			downPosX = obj.data.global.x;
@@ -692,24 +798,27 @@ function KeyBoard(){
 			inFlick();
 		});
 		b.on('pointermove', function(obj){
+			if(selectedButton != this) return;
 			if(down != true) return;
 			var num = checkNum(obj);
 			drawAroundLine(num);
 		});
 		b.on('pointerup', function(){
+			if(selectedButton != this) return;
 			tapButton(this);
 			containerAroundButton.removeChildren();
 			line.clear();
 			down = false;
-			self.emit('input', this.charset[0]);
+			//self.emit('input', this.charset[0]);
 			outFlick();
 		});
 		b.on('pointerupoutside', function(obj){
+			if(selectedButton != this) return;
 			containerAroundButton.removeChildren();
 			line.clear();
 			down = false;
 			var num = checkNum(obj);
-			self.emit('input', this.charset[num + 1]);
+			self.emit('input', this.charset[num]);
 			outFlick();
 		});
 		b.interactive = true;
@@ -721,7 +830,7 @@ function KeyBoard(){
 		var width = button.t.width;
 		var height = button.t.height;
 
-		for(var i = 1; i < 5; i++){
+		for(var i = 0; i < 5; i++){
 			var b = new TextButton(button.charset[i], style);
 			b.g.beginFill(0x808080);
 			b.g.drawRect(0, 0, width, height);
@@ -730,10 +839,10 @@ function KeyBoard(){
 		}
 
 		var range = 30;
-		containerAroundButton.children[0].x = -range;
-		containerAroundButton.children[1].y = -range;
-		containerAroundButton.children[2].x = +range;
-		containerAroundButton.children[3].y = +range;
+		containerAroundButton.children[1].x = -range;
+		containerAroundButton.children[2].y = -range;
+		containerAroundButton.children[3].x = +range;
+		containerAroundButton.children[4].y = +range;
 
 		containerAroundButton.x = button.x;
 		containerAroundButton.y = button.y;
@@ -748,22 +857,22 @@ function KeyBoard(){
 			//左右
 			if(vx > 0){
 				//右
-				return 2;
+				return 3;
 			}
 			else{
 				//左
-				return 0;
+				return 1;
 			}
 		}
 		else{
 			//上下
 			if(vy > 0){
 				//下
-				return 3;
+				return 4;
 			}
 			else{
 				//上
-				return 1;
+				return 2;
 			}
 		}
 	}
@@ -893,6 +1002,10 @@ content.setConfig({
 });
 
 content.defineImages({
+	back0: 'images/back0.png',
+	back1: 'images/back1.png',
+	back2: 'images/back2.png',
+	back3: 'images/back3.png',
 });
 
 content.defineLibraries({
