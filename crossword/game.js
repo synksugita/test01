@@ -490,6 +490,7 @@ console.log('end');
 		if(selectedList === undefined) return;
 		selectPos += move;
 		var list = selectedList.cellList;
+console.log(selectPos % list.length);
 		var cell = list[selectPos % list.length];
 		selectCell(cell);
 	});
@@ -1002,10 +1003,6 @@ content.setConfig({
 });
 
 content.defineImages({
-	back0: 'images/back0.png',
-	back1: 'images/back1.png',
-	back2: 'images/back2.png',
-	back3: 'images/back3.png',
 });
 
 content.defineLibraries({
