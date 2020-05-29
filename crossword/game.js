@@ -431,7 +431,7 @@ function Field(blueprint, width, height){
 	}
 
 	var hintY = blueprint.hintY;
-	for(var i = 0; i < hintX.length; i++){
+	for(var i = 0; i < hintY.length; i++){
 		var x = hintY[i].x - 1;
 		var y = hintY[i].y - 1;
 		var num = hintY[i].num;
@@ -456,7 +456,6 @@ function Field(blueprint, width, height){
 		if(nCell > nAnswered) return;
 		else if(nAnswered > nAnswer) return;
 		self.emit('end');
-console.log('end');
 	}
 
 	function inputCell(char){
@@ -488,10 +487,9 @@ console.log('end');
 	});
 	this.on('selectMove', function(move){
 		if(selectedList === undefined) return;
-		selectPos += move;
 		var list = selectedList.cellList;
-console.log(selectPos % list.length);
-		var cell = list[selectPos % list.length];
+		selectPos = ((selectPos + move) + list.length) % list.length;
+		var cell = list[selectPos];
 		selectCell(cell);
 	});
 	this.on('dakuten', function(){
@@ -637,7 +635,7 @@ function Hintbox(hint, title, width, height){
 		key.y = h;
 		h += key.t.height + space;
 		key.num = i;
-		key.on('pointerup', function(){
+		key.on('pointertap', function(obj){
 			if(move == true) return;
 			selectKey(this);
 			self.emit('select', this);
@@ -671,9 +669,11 @@ function Hintbox(hint, title, width, height){
 			c.y = height - h;
 		}
 	}
+
 	var pointerY;
 	var containerY;
 	var down = false;
+	var margin = 30;
 	this.on('pointerdown', function(obj){
 		down = true;
 		pointerY = obj.data.global.y;
@@ -681,8 +681,13 @@ function Hintbox(hint, title, width, height){
 	});
 	this.on('pointermove', function(obj){
 		if(down != true) return;
-		move = true;
-		var y = containerY + (obj.data.global.y - pointerY);
+		//move = true;
+		var v = obj.data.global.y - pointerY;
+		if(move == false){
+			if(Math.abs(v) > margin) move = true;
+			else return;
+		}
+		var y = containerY + v;
 		textScroll(y);
 		self.emit('scroll');
 	});
@@ -782,6 +787,7 @@ function KeyBoard(){
 		fontSize:20,
 		fill:0xffffff,
 	}
+
 	var selectedButton;
 	for(var i = 0; i < CharSet.length; i++){
 		var b = new CharsetButton(CharSet[i], style);
@@ -801,7 +807,9 @@ function KeyBoard(){
 		b.on('pointermove', function(obj){
 			if(selectedButton != this) return;
 			if(down != true) return;
-			var num = checkNum(obj);
+			var num;// = checkNum(obj);
+			if(checkOver(obj.data.global, this) == true) num = 0;
+			else num = checkNum(obj);
 			drawAroundLine(num);
 		});
 		b.on('pointerup', function(){
@@ -821,6 +829,7 @@ function KeyBoard(){
 			var num = checkNum(obj);
 			self.emit('input', this.charset[num]);
 			outFlick();
+			charnum = 0;
 		});
 		b.interactive = true;
 
@@ -876,6 +885,17 @@ function KeyBoard(){
 				return 2;
 			}
 		}
+	}
+
+	function checkOver(pointer, button){
+		var x = button.transform.worldTransform.tx;
+		var y = button.transform.worldTransform.ty;
+		var w = button.t.width;
+		var h = button.t.height;
+		if(x <= pointer.x && pointer.x <= x + w && y <= pointer.y && pointer.y <= y + h){
+			return true;
+		}
+		else return false;
 	}
 
 	var buttonDelete = new TextButton('×', style);
