@@ -29,6 +29,7 @@ function Ingame($){
 
 	var self = this;
 
+	var b;
 	var popup;
 	var board;
 	var keyboard;
@@ -41,6 +42,9 @@ function Ingame($){
 	g.endFill();
 	g.visible = false;
 
+	var keyWidth = 30;
+	var keyHeight = 30;
+
 	var style = {
 		fontSize:20,
 		fill:0xffffff,
@@ -50,6 +54,7 @@ function Ingame($){
 	t.visible = false;
 
 	function setInteractive(flag){
+		b.interactive = flag;
 		if(isClear == true) flag = false;
 		board.interactiveChildren = flag;
 		keyboard.interactiveChildren = flag;
@@ -68,14 +73,19 @@ function Ingame($){
 	function create(blueprint){
 		isClear = false;
 
-		var b = new TextButton('戻', style);
-		b.x = $.width - 50;
-		b.y = $.height - 50;
+		b = new TextButton('戻', style);
+		b.x = $.width - keyWidth;
+		b.y = $.height - keyHeight;
 		b.g.beginFill(0x808080);
-		b.g.drawRect(0,0,b.t.width,b.t.height);
+		b.g.drawRect(0, 0, keyWidth, keyHeight);
 		b.g.endFill();
+		b.t.x = keyWidth / 2;
+		b.t.y = keyHeight / 2;
+		b.t.anchor.x = 0.5;
+		b.t.anchor.y = 0.5;
 		b.on('pointerdown', function(){
-			popupVisible((popflag != true));
+			//popupVisible((popflag != true));
+			popupVisible(true);
 		});
 		b.interactive = true;
 
@@ -98,6 +108,9 @@ function Ingame($){
 			popupVisible(true);
 			//self.emit('end');
 		});
+		board.on('changeSelect', function(){
+			keyboard.emit('resetKey');
+		});
 
 		keyboard = new KeyBoard();
 		keyboard.x = 50;
@@ -115,8 +128,10 @@ function Ingame($){
 			board.emit('handakuten');
 		});
 
-		t.x = popup.x + 50;
+		t.x = popup.x + 100;
 		t.y = popup.y + 20;
+		t.anchor.x = 0.5;
+		t.anchor.y = 0.5;
 
 		popupVisible(false);
 
@@ -151,43 +166,58 @@ function Popup(){
 
 	var self = this;
 
+	var backWidth = 200;
+	var backHeight = 200;
+
 	var g = new PIXI.Graphics();
 	g.beginFill(0x808080);
 	g.lineStyle(2, 0xffffff);
-	g.drawRect(0, 0, 200, 200);
+	g.drawRect(0, 0, backWidth, backHeight);
 	g.endFill();
+
+	var containerButton = new Pixim.Container();
+	containerButton.x = 50;
+	containerButton.y = 50;
+
+	var buttonWidth = 100;
+	var buttonHeight = 30;
 
 	var style = {
 		fontSize:20,
 		fill:0xffffff,
 	}
 
-	var t1 = new TextButton('continue',style);
-	t1.x = 50;
-	t1.y = 50;
-	t1.g.beginFill(0x808080);
-	t1.g.lineStyle(2,0xffffff);
-	t1.g.drawRect(0,0,t1.t.width,t1.t.height);
-	t1.g.endFill();
-	t1.on('pointerdown', function(){
+	for(i = 0; i < 2; i++){
+		var b = new TextButton('', style);
+		b.g.beginFill(0x808080);
+		b.g.lineStyle(2, 0xffffff);
+		b.g.drawRect(0, 0, buttonWidth, buttonHeight);
+		b.g.endFill();
+		b.t.x = buttonWidth / 2;
+		b.t.y = buttonHeight / 2;
+		b.t.anchor.x = 0.5;
+		b.t.anchor.y = 0.5;
+		b.interactive = true;
+		containerButton.addChild(b);
+	}
+
+	var b = containerButton.children[0];
+	b.t.text = 'continue';
+	b.x = 0;
+	b.y = 0;
+	b.on('pointerdown', function(){
 		self.emit('select', true);
 	});
-	t1.interactive = true;
-	var t2 = new TextButton('end',style);
-	t2.x = 50;
-	t2.y = 100;
-	t2.g.beginFill(0x808080);
-	t2.g.lineStyle(2,0xffffff);
-	t2.g.drawRect(0,0,t2.t.width,t2.t.height);
-	t2.g.endFill();
-	t2.on('pointerdown', function(){
+
+	var b = containerButton.children[1];
+	b.t.text = 'end';
+	b.x = 0;
+	b.y = 50;
+	b.on('pointerdown', function(){
 		self.emit('select', false);
 	});
-	t2.interactive = true;
-
 	this.addChild(g);
-	this.addChild(t1);
-	this.addChild(t2);
+	this.addChild(containerButton);
 }
 
 Popup.prototype = Object.create(Pixim.Container.prototype);
@@ -227,6 +257,9 @@ function Board($, blueprint){
 	}
 
 	field.on('end', function(){
+		field.emit('deselect');
+		hintboxX.emit('deselectKey');
+		hintboxY.emit('deselectKey');
 		self.emit('end');
 	});
 	field.on('tapCell', function(){
@@ -234,28 +267,35 @@ function Board($, blueprint){
 		//hintboxX.emit('deselectKey');
 		//hintboxY.emit('deselectKey');
 	});
+	field.on('changeSelect', function(){
+		self.emit('changeSelect');
+	});
 
 	hintboxX.on('select', function(key){
 		hintboxY.emit('deselectKey');
 		field.emit('selectKeyX', key.num);
 		selectKey(this, key);
 	});
+/*
 	hintboxX.on('scroll', function(){
 		this.emit('deselectKey');
 		hintboxY.emit('deselectKey');
 		field.emit('deselect');
 	});
+*/
 
 	hintboxY.on('select', function(key){
 		hintboxX.emit('deselectKey');
 		field.emit('selectKeyY', key.num);
 		selectKey(this, key);
 	});
+/*
 	hintboxY.on('scroll', function(){
 		this.emit('deselectKey');
 		hintboxX.emit('deselectKey');
 		field.emit('deselect');
 	});
+*/
 
 
 	this.on('input', function(char){
@@ -316,14 +356,17 @@ function Field(blueprint, width, height){
 
 	function selectCell(cell){
 		if(cell.isActive == false) return;
-/*
+
 		if(selectedCell !== undefined){
 			if(selectedCell == cell){
-				deselect();
+				//deselect();
 				return;
 			}
+			else{
+				self.emit('changeSelect');
+			}
 		}
-*/
+
 		cellOnColor(cell);
 		cell.emit('select');
 		selectedCell = cell;
@@ -461,7 +504,8 @@ function Field(blueprint, width, height){
 	function inputCell(char){
 		//if(selectedCell === undefined) return;
 		var charOld = selectedCell.char.text;
-		if(charOld == char) return console.log(false);
+		if(charOld == char) return;
+		selectedCell.emit('setText', char);
 		var x = selectedCell.x / cellWidth;
 		var y = selectedCell.y / cellHeight;
 		if(charOld == ''){
@@ -477,8 +521,6 @@ function Field(blueprint, width, height){
 			nAnswer--;
 		}
 		checkAnswer();
-
-		selectedCell.emit('setText', char);
 	}
 
 	this.on('input', function(char){
@@ -621,7 +663,9 @@ function Hintbox(hint, title, width, height){
 
 	var textTitle = new TextButton(title, style);
 
-	var move = false;
+	var isSelectKey = false;
+	var canSelectKey = true;
+	var selectedKey;
 
 	var space = 20;
 	var h = 0;
@@ -636,7 +680,7 @@ function Hintbox(hint, title, width, height){
 		h += key.t.height + space;
 		key.num = i;
 		key.on('pointertap', function(obj){
-			if(move == true) return;
+			if(canSelectKey == false) return;
 			selectKey(this);
 			self.emit('select', this);
 		});
@@ -668,11 +712,15 @@ function Hintbox(hint, title, width, height){
 		else if(c.y + h < height){
 			c.y = height - h;
 		}
+		if(isSelectKey == true){
+			drawMarker(selectedKey);
+		}
 	}
 
+	var down = false;
+	var move = false;
 	var pointerY;
 	var containerY;
-	var down = false;
 	var margin = 30;
 	this.on('pointerdown', function(obj){
 		down = true;
@@ -681,10 +729,12 @@ function Hintbox(hint, title, width, height){
 	});
 	this.on('pointermove', function(obj){
 		if(down != true) return;
-		//move = true;
 		var v = obj.data.global.y - pointerY;
 		if(move == false){
-			if(Math.abs(v) > margin) move = true;
+			if(Math.abs(v) > margin){
+				move = true;
+				canSelectKey = false;
+			}
 			else return;
 		}
 		var y = containerY + v;
@@ -694,25 +744,34 @@ function Hintbox(hint, title, width, height){
 	this.on('pointerup', function(){
 		down = false;
 		move = false;
+		canSelectKey = true;
 	});
 	this.on('pointerupoutside', function(){
 		down = false;
 		move = false;
+		canSelectKey = true;
 	});
 	this.interactive = true;
 
 	var marker = new PIXI.Graphics();
 	marker.mask = mask;
-	function selectKey(key){
+	function drawMarker(key){
 		var x = containerKey.x + key.x;
 		var y = containerKey.y + key.y;
 		marker.clear();
 		marker.beginFill(0xffff00, 0.5);
-		marker.drawRect(x, y, key.width, key.height);
+		marker.drawRect(x, y, key.t.width, key.t.height);
 		marker.endFill();
 	}
 
+	function selectKey(key){
+		isSelectKey = true;
+		selectedKey = key;
+		drawMarker(key);
+	}
+
 	function deselectKey(){
+		isSelectKey = false;
 		selectedKey = undefined;
 		marker.clear();
 	}
@@ -720,7 +779,6 @@ function Hintbox(hint, title, width, height){
 	this.on('deselectKey', function(){
 		deselectKey();
 	})
-
 
 	this.addChild(g);
 	this.addChild(mask);
@@ -736,6 +794,9 @@ function KeyBoard(){
 	Pixim.Container.call(this);
 
 	var self = this;
+
+	var keyWidth = 30;
+	var keyHeight = 30;
 
 	var selectButton;
 	var charnum = 0;
@@ -763,15 +824,15 @@ function KeyBoard(){
 
 	var line = new PIXI.Graphics();
 	function drawAroundLine(num){
-		var width = containerFlickButton.children[0].t.width;
-		var height = containerFlickButton.children[0].t.height;
+		//var width = containerFlickButton.children[0].t.width;
+		//var height = containerFlickButton.children[0].t.height;
 		var b = containerAroundButton.children[num];
 		line.x = containerAroundButton.x + b.x;
 		line.y = containerAroundButton.y + b.y;
 		line.clear();
 		line.beginFill(0, 0);
 		line.lineStyle(2, 0xff0000);
-		line.drawRect(0, 0, width, height);
+		line.drawRect(0, 0, keyWidth, keyHeight);
 		line.endFill();
 	}
 
@@ -792,9 +853,13 @@ function KeyBoard(){
 	for(var i = 0; i < CharSet.length; i++){
 		var b = new CharsetButton(CharSet[i], style);
 		b.g.beginFill(0x808080);
-		b.g.drawRect(0, 0, b.t.width, b.t.height);
+		b.g.drawRect(0, 0, keyWidth, keyHeight);
 		b.g.endFill();
-		b.x = 30 * i;
+		b.t.x = keyWidth / 2;
+		b.t.y = keyHeight / 2;
+		b.t.anchor.x = 0.5;
+		b.t.anchor.y = 0.5;
+		b.x = (keyWidth + 5) * i;
 		b.y = 0;
 		b.on('pointerdown', function(obj){
 			selectedButton = this;
@@ -803,6 +868,7 @@ function KeyBoard(){
 			downPosX = obj.data.global.x;
 			downPosY = obj.data.global.y;
 			inFlick();
+			drawAroundLine(0);
 		});
 		b.on('pointermove', function(obj){
 			if(selectedButton != this) return;
@@ -837,18 +903,22 @@ function KeyBoard(){
 	}
 
 	function createAroundButton(button){
-		var width = button.t.width;
-		var height = button.t.height;
+		//var width = button.t.width;
+		//var height = button.t.height;
 
 		for(var i = 0; i < 5; i++){
 			var b = new TextButton(button.charset[i], style);
 			b.g.beginFill(0x808080);
-			b.g.drawRect(0, 0, width, height);
+			b.g.drawRect(0, 0, keyWidth, keyHeight);
 			b.g.endFill();
+			b.t.x = keyWidth / 2;
+			b.t.y = keyHeight / 2;
+			b.t.anchor.x = 0.5;
+			b.t.anchor.y = 0.5;
 			containerAroundButton.addChild(b);
 		}
 
-		var range = 30;
+		var range = ((keyWidth > keyHeight) ? keyWidth : keyHeight) + 5;
 		containerAroundButton.children[1].x = -range;
 		containerAroundButton.children[2].y = -range;
 		containerAroundButton.children[3].x = +range;
@@ -890,76 +960,78 @@ function KeyBoard(){
 	function checkOver(pointer, button){
 		var x = button.transform.worldTransform.tx;
 		var y = button.transform.worldTransform.ty;
-		var w = button.t.width;
-		var h = button.t.height;
+		var w = keyWidth;
+		var h = keyHeight;
 		if(x <= pointer.x && pointer.x <= x + w && y <= pointer.y && pointer.y <= y + h){
 			return true;
 		}
 		else return false;
 	}
 
-	var buttonDelete = new TextButton('×', style);
-	buttonDelete.x = 0;
-	buttonDelete.y = 50;
-	buttonDelete.g.beginFill(0x808080);
-	buttonDelete.g.drawRect(0, 0, buttonDelete.t.width, buttonDelete.t.height);
-	buttonDelete.g.endFill();
-	buttonDelete.on('pointerdown', function(){
+	var containerButton = new Pixim.Container();
+	containerButton.x = 0;
+	containerButton.y = 50;
+	for(var i = 0; i < 5; i++){
+		var b = new TextButton('',style);
+		b.g.beginFill(0x808080);
+		b.g.drawRect(0, 0, keyWidth, keyHeight);
+		b.g.endFill();
+		b.t.x = keyWidth / 2;
+		b.t.y = keyHeight / 2;
+		b.t.anchor.x = 0.5;
+		b.t.anchor.y = 0.5;
+		b.interactive = true;
+		containerButton.addChild(b);
+	}
+
+	var b = containerButton.children[0];
+	b.t.text = '×';
+	b.x = 0;
+	b.y = 0;
+	b.on('pointerdown', function(){
 		self.emit('input', '');
 	});
-	buttonDelete.interactive = true;
 
-	var buttonLeft = new TextButton('←', style);
-	buttonLeft.x = 150;
-	buttonLeft.y = 50;
-	buttonLeft.g.beginFill(0x808080);
-	buttonLeft.g.drawRect(0, 0, buttonLeft.t.width, buttonLeft.t.height);
-	buttonLeft.g.endFill();
-	buttonLeft.on('pointerdown', function(){
-		self.emit('selectMove', -1);
-	});
-	buttonLeft.interactive = true;
-
-	var buttonRight = new TextButton('→', style);
-	buttonRight.x = 200;
-	buttonRight.y = 50;
-	buttonRight.g.beginFill(0x808080);
-	buttonRight.g.drawRect(0, 0, buttonRight.t.width, buttonRight.t.height);
-	buttonRight.g.endFill();
-	buttonRight.on('pointerdown', function(){
-		self.emit('selectMove', +1);
-	});
-	buttonRight.interactive = true;
-
-	var buttonDakuten = new TextButton('゛', style);
-	buttonDakuten.x = 50;
-	buttonDakuten.y = 50;
-	buttonDakuten.g.beginFill(0x808080);
-	buttonDakuten.g.drawRect(0, 0, buttonDakuten.t.width, buttonDakuten.t.height);
-	buttonDakuten.g.endFill();
-	buttonDakuten.on('pointerdown', function(){
+	var b = containerButton.children[1];
+	b.t.text = '゛';
+	b.x = 50;
+	b.y = 0;
+	b.on('pointerdown', function(){
 		self.emit('dakuten');
 	});
-	buttonDakuten.interactive = true;
 
-	var buttonHandakuten = new TextButton('゜', style);
-	buttonHandakuten.x = 100;
-	buttonHandakuten.y = 50;
-	buttonHandakuten.g.beginFill(0x808080);
-	buttonHandakuten.g.drawRect(0, 0, buttonHandakuten.t.width, buttonHandakuten.t.height);
-	buttonHandakuten.g.endFill();
-	buttonHandakuten.on('pointerdown', function(){
+	var b = containerButton.children[2];
+	b.t.text = '゜';
+	b.x = 100;
+	b.y = 0;
+	b.on('pointerdown', function(){
 		self.emit('handakuten');
 	});
-	buttonHandakuten.interactive = true;
+
+	var b = containerButton.children[3];
+	b.t.text = '←';
+	b.x = 150;
+	b.y = 0;
+	b.on('pointerdown', function(){
+		self.emit('selectMove', -1);
+	});
+
+	var b = containerButton.children[4];
+	b.t.text = '→';
+	b.x = 200;
+	b.y = 0;
+	b.on('pointerdown', function(){
+		self.emit('selectMove', +1);
+	});
+
+
+	this.on('resetKey', function(){
+		charnum = 0;
+	});
 
 
 	this.addChild(containerFlickButton);
-	this.addChild(buttonDelete);
-	this.addChild(buttonLeft);
-	this.addChild(buttonRight);
-	this.addChild(buttonDakuten);
-	this.addChild(buttonHandakuten);
+	this.addChild(containerButton);
 	this.addChild(g);
 	this.addChild(containerAroundButton);
 	this.addChild(line);
