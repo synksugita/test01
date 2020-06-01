@@ -113,8 +113,8 @@ function Ingame($){
 		});
 
 		keyboard = new KeyBoard();
-		keyboard.x = 50;
-		keyboard.y = $.height - 100;
+		keyboard.x = 80;
+		keyboard.y = $.height - 110;
 		keyboard.on('input', function(char){
 			board.emit('input', char);
 		});
@@ -718,10 +718,9 @@ function Hintbox(hint, title, width, height){
 	}
 
 	var down = false;
-	var move = false;
 	var pointerY;
 	var containerY;
-	var margin = 30;
+	var margin = 15;
 	this.on('pointerdown', function(obj){
 		down = true;
 		pointerY = obj.data.global.y;
@@ -730,25 +729,19 @@ function Hintbox(hint, title, width, height){
 	this.on('pointermove', function(obj){
 		if(down != true) return;
 		var v = obj.data.global.y - pointerY;
-		if(move == false){
-			if(Math.abs(v) > margin){
-				move = true;
+		if(Math.abs(v) > margin){
 				canSelectKey = false;
 			}
-			else return;
-		}
 		var y = containerY + v;
 		textScroll(y);
 		self.emit('scroll');
 	});
 	this.on('pointerup', function(){
 		down = false;
-		move = false;
 		canSelectKey = true;
 	});
 	this.on('pointerupoutside', function(){
 		down = false;
-		move = false;
 		canSelectKey = true;
 	});
 	this.interactive = true;
@@ -795,8 +788,9 @@ function KeyBoard(){
 
 	var self = this;
 
-	var keyWidth = 30;
+	var keyWidth = 50;
 	var keyHeight = 30;
+	var keySpace = 5;
 
 	var selectButton;
 	var charnum = 0;
@@ -859,8 +853,6 @@ function KeyBoard(){
 		b.t.y = keyHeight / 2;
 		b.t.anchor.x = 0.5;
 		b.t.anchor.y = 0.5;
-		b.x = (keyWidth + 5) * i;
-		b.y = 0;
 		b.on('pointerdown', function(obj){
 			selectedButton = this;
 			createAroundButton(this);
@@ -918,11 +910,13 @@ function KeyBoard(){
 			containerAroundButton.addChild(b);
 		}
 
-		var range = ((keyWidth > keyHeight) ? keyWidth : keyHeight) + 5;
-		containerAroundButton.children[1].x = -range;
-		containerAroundButton.children[2].y = -range;
-		containerAroundButton.children[3].x = +range;
-		containerAroundButton.children[4].y = +range;
+		//var range = ((keyWidth > keyHeight) ? keyWidth : keyHeight) + 5;
+		var rangeX = keyWidth + keySpace;
+		var rangeY = keyHeight + keySpace;
+		containerAroundButton.children[1].x = -rangeX;
+		containerAroundButton.children[2].y = -rangeY;
+		containerAroundButton.children[3].x = +rangeX;
+		containerAroundButton.children[4].y = +rangeY;
 
 		containerAroundButton.x = button.x;
 		containerAroundButton.y = button.y;
@@ -969,8 +963,6 @@ function KeyBoard(){
 	}
 
 	var containerButton = new Pixim.Container();
-	containerButton.x = 0;
-	containerButton.y = 50;
 	for(var i = 0; i < 5; i++){
 		var b = new TextButton('',style);
 		b.g.beginFill(0x808080);
@@ -986,43 +978,46 @@ function KeyBoard(){
 
 	var b = containerButton.children[0];
 	b.t.text = '×';
-	b.x = 0;
-	b.y = 0;
 	b.on('pointerdown', function(){
 		self.emit('input', '');
 	});
 
 	var b = containerButton.children[1];
 	b.t.text = '゛';
-	b.x = 50;
-	b.y = 0;
 	b.on('pointerdown', function(){
 		self.emit('dakuten');
 	});
 
 	var b = containerButton.children[2];
 	b.t.text = '゜';
-	b.x = 100;
-	b.y = 0;
 	b.on('pointerdown', function(){
 		self.emit('handakuten');
 	});
 
 	var b = containerButton.children[3];
 	b.t.text = '←';
-	b.x = 150;
-	b.y = 0;
 	b.on('pointerdown', function(){
 		self.emit('selectMove', -1);
 	});
 
 	var b = containerButton.children[4];
 	b.t.text = '→';
-	b.x = 200;
-	b.y = 0;
 	b.on('pointerdown', function(){
 		self.emit('selectMove', +1);
 	});
+
+
+	for(var i = 0; i < containerFlickButton.children.length; i++){
+		var b = containerFlickButton.children[i];
+		b.x = (keyWidth + keySpace) * parseInt(i % 5);
+		b.y = (keyHeight + keySpace) * parseInt(i / 5);
+	}
+
+	for(var i = 0; i < containerButton.children.length; i++){
+		var b = containerButton.children[i];
+		b.x = (keyWidth + keySpace) * parseInt(i % 5);
+		b.y = (keyHeight + keySpace) * parseInt((i / 5) + 2);
+	}
 
 
 	this.on('resetKey', function(){
