@@ -56,7 +56,7 @@ function Ingame($){
 	function setInteractive(flag){
 		b.interactive = flag;
 		if(isClear == true) flag = false;
-		board.interactiveChildren = flag;
+		board.emit('setInteractive', flag);
 		keyboard.interactiveChildren = flag;
 	}
 
@@ -106,6 +106,7 @@ function Ingame($){
 		board.on('end', function(){
 			isClear = true;
 			popupVisible(true);
+			keyboard.visible = false;
 			//self.emit('end');
 		});
 		board.on('changeSelect', function(){
@@ -126,6 +127,9 @@ function Ingame($){
 		});
 		keyboard.on('handakuten', function(){
 			board.emit('handakuten');
+		});
+		keyboard.on('flick', function(char){
+			board.emit('flick', char);
 		});
 
 		t.x = popup.x + 100;
@@ -202,7 +206,7 @@ function Popup(){
 	}
 
 	var b = containerButton.children[0];
-	b.t.text = 'continue';
+	b.t.text = 'close';
 	b.x = 0;
 	b.y = 0;
 	b.on('pointerdown', function(){
@@ -210,7 +214,7 @@ function Popup(){
 	});
 
 	var b = containerButton.children[1];
-	b.t.text = 'end';
+	b.t.text = 'exit';
 	b.x = 0;
 	b.y = 50;
 	b.on('pointerdown', function(){
@@ -310,6 +314,16 @@ function Board($, blueprint){
 	this.on('handakuten', function(){
 		field.emit('handakuten');
 	});
+	this.on('flick', function(char){
+		field.emit('input', char);
+		field.emit('selectMove', 1);
+	});
+
+	this.on('setInteractive', function(flag){
+		field.interactiveChildren = flag;
+		//hintboxX.interactiveChildren = flag;
+		//hintboxY.interactiveChildren = flag;
+	});
 
 
 	this.addChild(field);
@@ -329,6 +343,8 @@ function Field(blueprint, width, height){
 	var nAnswered = 0;
 	var nAnswer = 0;
 
+	var isClear = false;
+
 	var listLine = new PIXI.Graphics();
 	var cellColor = new PIXI.Graphics();
 
@@ -341,8 +357,8 @@ function Field(blueprint, width, height){
 
 	function listOnLine(list){
 		listLine.clear();
-		listLine.beginFill(0,0);
-		listLine.lineStyle(2,0xff0000);
+		listLine.beginFill(0, 0);
+		listLine.lineStyle(3, 0xff0000);
 		listLine.drawRect(list.x, list.y, list.w, list.h);
 		listLine.endFill();
 	}
@@ -392,6 +408,7 @@ function Field(blueprint, width, height){
 
 		selectedList = list;
 		selectPos = 0;
+		if(isClear == true) return;
 		selectCell(list.cellList[0]);
 	}
 
@@ -498,6 +515,7 @@ function Field(blueprint, width, height){
 	function checkAnswer(){
 		if(nCell > nAnswered) return;
 		else if(nAnswered > nAnswer) return;
+		isClear = true;
 		self.emit('end');
 	}
 
@@ -594,24 +612,25 @@ function Cell(width, height, isActive){
 	//if(isActive === undefined) return;
 	this.isActive = isActive;
 
-	var backcolor;
-	if(isActive == true){
-		backcolor = 0x808080;
-	}
-	else{
-		backcolor = 0xffffff;
-	}
+	var backcolor = 0xffffff;
 
+	
 	var g = new PIXI.Graphics();
 	g.beginFill(backcolor);
 	g.lineStyle(2, 0);
 	g.drawRect(0, 0, width, height);
 	g.endFill();
 
+	var space = 5;
+	var black = new PIXI.Graphics();
+	black.beginFill(0);
+	black.drawRect(space, space, width - space*2, height - space*2);
+	black.endFill();
+
 	var small = (width < height) ? width : height;
 	var style = {
 		fontSize: small * 0.5,
-		fill:0xffffff,
+		fill:0x000000,
 	}
 	this.char = new PIXI.Text('', style);
 	this.char.anchor.x = 0.5;
@@ -619,15 +638,21 @@ function Cell(width, height, isActive){
 	this.char.x = width/2;
 	this.char.y = height/2;
 
+	var style = {
+		fontSize: small * 0.2,
+		fill:0x000000,
+	}
+	var num = new PIXI.Text('', style);
+
+
+	black.visible = (isActive != true);
+	this.char.visiblle = isActive;
+	num.visible = isActive;
+
+
 	this.on('setText', function(text){
 		self.char.text = text;
 	});
-
-	var style = {
-		fontSize: small * 0.2,
-		fill:0xffffff,
-	}
-	var num = new PIXI.Text('', style);
 
 	this.on('setNum', function(text){
 		num.text = text;
@@ -637,6 +662,7 @@ function Cell(width, height, isActive){
 	this.addChild(g);
 	this.addChild(this.char);
 	this.addChild(num);
+	this.addChild(black);
 }
 
 Cell.prototype = Object.create(Pixim.Container.prototype);
@@ -647,11 +673,19 @@ function Hintbox(hint, title, width, height){
 
 	var self = this;
 
+	var backcolor = 0x808080;
+
 	var g = new PIXI.Graphics();
-	g.beginFill(0x808080);
-	g.lineStyle(2, 0xffffff);
+	g.beginFill(backcolor);
+	//g.lineStyle(2, 0xffffff);
 	g.drawRect(0, 0, width, height);
 	g.endFill();
+
+	var line = new PIXI.Graphics();
+	line.beginFill(0, 0);
+	line.lineStyle(2, 0xffffff);
+	line.drawRect(0, 0, width, height);
+	line.endFill();
 
 	var style = {
 		fontSize: 20,
@@ -667,7 +701,7 @@ function Hintbox(hint, title, width, height){
 	var canSelectKey = true;
 	var selectedKey;
 
-	var space = 20;
+	var space = 10;
 	var h = 0;
 	var containerKey = new Pixim.Container();
 	containerKey.y = textTitle.height;
@@ -679,6 +713,9 @@ function Hintbox(hint, title, width, height){
 		key.y = h;
 		h += key.t.height + space;
 		key.num = i;
+		key.g.beginFill(backcolor);
+		key.g.drawRect(0, 0, width, key.t.height);
+		key.g.endFill();
 		key.on('pointertap', function(obj){
 			if(canSelectKey == false) return;
 			selectKey(this);
@@ -753,7 +790,7 @@ function Hintbox(hint, title, width, height){
 		var y = containerKey.y + key.y;
 		marker.clear();
 		marker.beginFill(0xffff00, 0.5);
-		marker.drawRect(x, y, key.t.width, key.t.height);
+		marker.drawRect(x, y, width, key.t.height);
 		marker.endFill();
 	}
 
@@ -778,6 +815,7 @@ function Hintbox(hint, title, width, height){
 	this.addChild(textTitle);
 	this.addChild(containerKey);
 	this.addChild(marker);
+	this.addChild(line);
 }
 
 Hintbox.prototype = Object.create(Pixim.Container.prototype);
@@ -818,8 +856,6 @@ function KeyBoard(){
 
 	var line = new PIXI.Graphics();
 	function drawAroundLine(num){
-		//var width = containerFlickButton.children[0].t.width;
-		//var height = containerFlickButton.children[0].t.height;
 		var b = containerAroundButton.children[num];
 		line.x = containerAroundButton.x + b.x;
 		line.y = containerAroundButton.y + b.y;
@@ -873,20 +909,21 @@ function KeyBoard(){
 		b.on('pointerup', function(){
 			if(selectedButton != this) return;
 			tapButton(this);
-			containerAroundButton.removeChildren();
 			line.clear();
 			down = false;
 			//self.emit('input', this.charset[0]);
 			outFlick();
+			containerAroundButton.removeChildren();
 		});
 		b.on('pointerupoutside', function(obj){
 			if(selectedButton != this) return;
-			containerAroundButton.removeChildren();
 			line.clear();
 			down = false;
 			var num = checkNum(obj);
-			self.emit('input', this.charset[num]);
+			//self.emit('input', this.charset[num]);
+			self.emit('flick', this.charset[num]);
 			outFlick();
+			containerAroundButton.removeChildren();
 			charnum = 0;
 		});
 		b.interactive = true;
@@ -895,11 +932,10 @@ function KeyBoard(){
 	}
 
 	function createAroundButton(button){
-		//var width = button.t.width;
-		//var height = button.t.height;
-
-		for(var i = 0; i < 5; i++){
-			var b = new TextButton(button.charset[i], style);
+		var c = containerAroundButton;
+		for(var i = 0; i < button.charset.length; i++){
+			var char = button.charset[i];
+			var b = new TextButton(char, style);
 			b.g.beginFill(0x808080);
 			b.g.drawRect(0, 0, keyWidth, keyHeight);
 			b.g.endFill();
@@ -907,22 +943,24 @@ function KeyBoard(){
 			b.t.y = keyHeight / 2;
 			b.t.anchor.x = 0.5;
 			b.t.anchor.y = 0.5;
-			containerAroundButton.addChild(b);
+			c.addChild(b);
 		}
 
-		//var range = ((keyWidth > keyHeight) ? keyWidth : keyHeight) + 5;
-		var rangeX = keyWidth + keySpace;
-		var rangeY = keyHeight + keySpace;
-		containerAroundButton.children[1].x = -rangeX;
-		containerAroundButton.children[2].y = -rangeY;
-		containerAroundButton.children[3].x = +rangeX;
-		containerAroundButton.children[4].y = +rangeY;
+		for(var i = 0; i < c.children.length - 1; i++){
+			var b = c.children[i + 1];
+			if(b === undefined) break;
+			var deg = 90 * i;
+			var rad = deg * (Math.PI / 180);
+			b.x = -Math.cos(rad) * (keyWidth + keySpace);
+			b.y = -Math.sin(rad) * (keyHeight + keySpace);
+		}
 
 		containerAroundButton.x = button.x;
 		containerAroundButton.y = button.y;
 	}
 
 	function checkNum(obj){
+		var num;
 		var vx = obj.data.global.x - downPosX;
 		var vy = obj.data.global.y - downPosY;
 		var ax = Math.abs(vx);
@@ -931,24 +969,26 @@ function KeyBoard(){
 			//左右
 			if(vx > 0){
 				//右
-				return 3;
+				num = 3;
 			}
 			else{
 				//左
-				return 1;
+				num = 1;
 			}
 		}
 		else{
 			//上下
 			if(vy > 0){
 				//下
-				return 4;
+				num = 4;
 			}
 			else{
 				//上
-				return 2;
+				num = 2;
 			}
 		}
+		if(containerAroundButton.children[num] === undefined) return 0;
+		else return num;
 	}
 
 	function checkOver(pointer, button){
