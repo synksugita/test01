@@ -111,6 +111,7 @@ function Ingame($){
 		});
 		board.on('changeSelect', function(){
 			keyboard.emit('resetKey');
+console.log('change');
 		});
 
 		keyboard = new KeyBoard();
@@ -315,8 +316,9 @@ function Board($, blueprint){
 		field.emit('handakuten');
 	});
 	this.on('flick', function(char){
-		field.emit('input', char);
-		field.emit('selectMove', 1);
+		//field.emit('input', char);
+		//field.emit('selectMove', 1);
+field.emit('flick', char);
 	});
 
 	this.on('setInteractive', function(flag){
@@ -352,6 +354,8 @@ function Field(blueprint, width, height){
 	var selectedList;
 	var selectPos = 0;
 
+var flicked = false;
+
 	var listX = new Array();
 	var listY = new Array();
 
@@ -378,14 +382,18 @@ function Field(blueprint, width, height){
 				//deselect();
 				return;
 			}
+/*
 			else{
 				self.emit('changeSelect');
 			}
+*/
 		}
 
 		cellOnColor(cell);
 		cell.emit('select');
 		selectedCell = cell;
+self.emit('changeSelect');
+flicked = false;
 	}
 
 	function tapCell(cell){
@@ -539,6 +547,7 @@ function Field(blueprint, width, height){
 			nAnswer--;
 		}
 		checkAnswer();
+flicked = false;
 	}
 
 	this.on('input', function(char){
@@ -594,6 +603,12 @@ function Field(blueprint, width, height){
 		}
 		inputCell(char);
 	});
+this.on('flick', function(char){
+	if(selectedCell === undefined) return;
+	if(flicked == true) this.emit('selectMove', 1);
+	inputCell(char);
+flicked = true;
+});
 
 
 	this.addChild(containerCell);
