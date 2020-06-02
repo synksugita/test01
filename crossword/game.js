@@ -6,10 +6,12 @@ function Root($){
 	var ingame = new Ingame($);
 	var outgame = new Outgame($);
 
+	//インゲーム終了処理
 	ingame.on('end', function(){
 		this.emit('release');
 		outgame.emit('create');
 	});
+	//インゲーム開始処理
 	outgame.on('select', function(blueprint){
 		this.emit('release');
 		ingame.emit('create', blueprint);
@@ -18,6 +20,7 @@ function Root($){
 	this.addChild(ingame);
 	this.addChild(outgame);
 
+	//スタート画面
 	outgame.emit('create');
 }
 
@@ -29,19 +32,21 @@ function Ingame($){
 
 	var self = this;
 
-	var b;
+	var b;//ポップアップボタン
 	var popup;
 	var board;
 	var keyboard;
 
-	var isClear = false;
+	var isClear = false;//ゲームクリア判定
 
+	//ポップアップ時の半透明の黒ベタ
 	var g = new PIXI.Graphics();
 	g.beginFill(0,0.5);
 	g.drawRect(0,0,$.width,$.height);
 	g.endFill();
 	g.visible = false;
 
+	//ポップアップボタンの大きさ
 	var keyWidth = 30;
 	var keyHeight = 30;
 
@@ -50,16 +55,17 @@ function Ingame($){
 		fill:0xffffff,
 	}
 
+	//ゲームクリア時の表示
 	var t = new PIXI.Text('CLEAR', style);
 	t.visible = false;
 
+	//ポップアップ表示時の処理
 	function setInteractive(flag){
 		b.interactive = flag;
 		if(isClear == true) flag = false;
 		board.emit('setInteractive', flag);
 		keyboard.interactiveChildren = flag;
 	}
-
 	var popflag = false;
 	function popupVisible(flag){
 		popflag = flag;
@@ -73,6 +79,7 @@ function Ingame($){
 	function create(blueprint){
 		isClear = false;
 
+		//ポップアップ表示ボタン
 		b = new TextButton('戻', style);
 		b.x = $.width - keyWidth;
 		b.y = $.height - keyHeight;
@@ -104,6 +111,7 @@ function Ingame($){
 
 		board = new Board($, blueprint);
 		board.on('end', function(){
+			//ゲーム終了時
 			isClear = true;
 			popupVisible(true);
 			keyboard.visible = false;
@@ -173,6 +181,7 @@ function Popup(){
 
 	var self = this;
 
+	//背景
 	var backWidth = 200;
 	var backHeight = 200;
 
@@ -182,6 +191,7 @@ function Popup(){
 	g.drawRect(0, 0, backWidth, backHeight);
 	g.endFill();
 
+	//ボタン
 	var containerButton = new Pixim.Container();
 	containerButton.x = 50;
 	containerButton.y = 50;
@@ -235,18 +245,23 @@ function Board($, blueprint){
 
 	var self = this;
 
-	var small = ($.width < $.height) ? $.width : $.height;
-	var width = small;
-	var height = small;
+	//フィールドの大きさを決める
+	//var small = ($.width < $.height) ? $.width : $.height;
+	var width = $.width;
+	var height = $.width;
 
 	var field = new Field(blueprint, width, height);
+
+	//フィールドの下にヒントを表示する
 	var hintboxX = new Hintbox(blueprint.hintX, 'ヨコのカギ', $.width/2, 200);
 	hintboxX.x = 0;
 	hintboxX.y = height;
+
 	var hintboxY = new Hintbox(blueprint.hintY, 'タテのカギ', $.width/2, 200);
 	hintboxY.x = $.width/2;
 	hintboxY.y = height;
 
+	//カギを選択した時の処理
 	var selectedHint;
 	var selectedKey;
 	function selectKey(hint, key){
@@ -263,48 +278,38 @@ function Board($, blueprint){
 		selectedKey = key;
 	}
 
+	//ゲーム終了時
 	field.on('end', function(){
 		field.emit('deselect');
 		hintboxX.emit('deselectKey');
 		hintboxY.emit('deselectKey');
 		self.emit('end');
 	});
+	//マスをタップした時
 	field.on('tapCell', function(){
 		selectKey(selectedHint, selectedKey);
 		//hintboxX.emit('deselectKey');
 		//hintboxY.emit('deselectKey');
 	});
+	//マスの選択が変わった時
 	field.on('changeSelect', function(){
 		self.emit('changeSelect');
 	});
 
+	//カギを選択した時
 	hintboxX.on('select', function(key){
 		hintboxY.emit('deselectKey');
 		field.emit('selectKeyX', key.num);
 		selectKey(this, key);
 	});
-/*
-	hintboxX.on('scroll', function(){
-		this.emit('deselectKey');
-		hintboxY.emit('deselectKey');
-		field.emit('deselect');
-	});
-*/
 
 	hintboxY.on('select', function(key){
 		hintboxX.emit('deselectKey');
 		field.emit('selectKeyY', key.num);
 		selectKey(this, key);
 	});
-/*
-	hintboxY.on('scroll', function(){
-		this.emit('deselectKey');
-		hintboxX.emit('deselectKey');
-		field.emit('deselect');
-	});
-*/
 
-
+	//キーボードの入力があった時
 	this.on('input', function(char){
 		field.emit('input', char);
 	});
@@ -346,25 +351,29 @@ function Field(blueprint, width, height){
 
 	var self = this;
 
-	var nCell = 0;
-	var nAnswered = 0;
-	var nAnswer = 0;
+	var nCell = 0;//入力できるマスの数
+	var nAnswered = 0;//入力した数
+	var nAnswer = 0;//正解を入力した数
 
-	var isClear = false;
+	var isClear = false;//ゲームクリアフラグ
 
+	//カギ選択時のマスを囲む枠線
 	var listLine = new PIXI.Graphics();
+	//選択しているマスに被せる色
 	var cellColor = new PIXI.Graphics();
 
-	var selectedCell;
-	var selectedList;
-	var selectPos = 0;
+	var selectedCell;//選択したマス
+	var selectedList;//選択したマスリスト
+	var selectPos = 0;//リストの選択番号
 
-	var tapInput = false;
-	var inputEnd = false;
+	var tapInput = false;//文字タップ入力フラグ
+	var inputEnd = false;//文字入力終了フラグ
 
+	//カギに対応するマスリスト
 	var listX = new Array();
 	var listY = new Array();
 
+	//枠線表示
 	function listOnLine(list){
 		listLine.clear();
 		listLine.beginFill(0, 0);
@@ -372,7 +381,7 @@ function Field(blueprint, width, height){
 		listLine.drawRect(list.x, list.y, list.w, list.h);
 		listLine.endFill();
 	}
-
+	//選択色表示
 	function cellOnColor(cell){
 		cellColor.clear();
 		cellColor.beginFill(0xff0000, 0.5);
@@ -380,11 +389,11 @@ function Field(blueprint, width, height){
 		cellColor.endFill();
 	}
 
+	//マスを選択した時
 	function selectCell(cell){
 		if(cell.isActive == false) return;
-
-		if(selectedCell !== undefined){
 /*
+		if(selectedCell !== undefined){
 			if(selectedCell == cell){
 				//deselect();
 				return;
@@ -392,9 +401,8 @@ function Field(blueprint, width, height){
 			else{
 				self.emit('changeSelect');
 			}
-*/
 		}
-
+*/
 		cellOnColor(cell);
 		cell.emit('select');
 		selectedCell = cell;
@@ -403,12 +411,14 @@ function Field(blueprint, width, height){
 		inputEnd = false;
 	}
 
+	//マスをタップで選択した時
 	function tapCell(cell){
 		self.emit('tapCell');
 		listLine.clear();
 		selectCell(cell);
 	}
 
+	//マスリストを選択した時
 	function selectList(list){
 /*
 		if(selectedList !== undefined){
@@ -418,52 +428,56 @@ function Field(blueprint, width, height){
 			}
 		}
 */
-
 		listOnLine(list);
-
 		selectedList = list;
 		selectPos = 0;
 		if(isClear == true) return;
 		selectCell(list.cellList[0]);
 	}
 
+	//カギを選択した時
 	this.on('selectKeyX', function(num){
 		selectList(listX[num]);
 	});
-
 	this.on('selectKeyY', function(num){
 		selectList(listY[num]);
 	});
 
+	//選択解除
 	function deselect(){
 		selectedCell = undefined;
 		selectedList = undefined;
 		cellColor.clear();
 		listLine.clear();
 	}
-
 	this.on('deselect', function(){
 		deselect();
 	});
 
+	//作成したマスの保持用
 	var containerCell = new Pixim.Container();
 	var arrayCell = new Array();
 
 	var answer = blueprint.answer;
 
+	//マスの大きさを決める
 	var big = (answer[0].length > answer.length) ? answer[0].length : answer.length;
 	var cellWidth = width / big;
 	var cellHeight = height / big;
+	//表示位置を中央に寄せる
 	if(answer[0].length > answer.length){
 		containerCell.y = Math.abs((answer[0].length - answer.length) / 2 * cellHeight);
 	}
 	else{
 		containerCell.x = Math.abs((answer[0].length - answer.length) / 2 * cellHeight);
 	}
+	//表示位置の調整
 	listLine.x = containerCell.x;
 	listLine.y = containerCell.y;
 	cellColor.x = containerCell.x;
 	cellColor.y = containerCell.y;
+
+	//全マスの作成
 	for(var y = 0; y < answer.length; y++){
 		var line = new Array();
 		for(var x = 0; x < answer[y].length; x++){
@@ -483,6 +497,7 @@ function Field(blueprint, width, height){
 		arrayCell.push(line);
 	}
 
+	//マスリストの作成
 	var hintX = blueprint.hintX;
 	for(var i = 0; i < hintX.length; i++){
 		var x = hintX[i].x - 1;
@@ -527,6 +542,7 @@ function Field(blueprint, width, height){
 		});
 	}
 
+	//答え合わせ
 	function checkAnswer(){
 		if(nCell > nAnswered) return;
 		else if(nAnswered > nAnswer) return;
@@ -534,11 +550,15 @@ function Field(blueprint, width, height){
 		self.emit('end');
 	}
 
+	//マスへの文字入力処理
 	function inputCell(char){
 		//if(selectedCell === undefined) return;
+
 		var charOld = selectedCell.char.text;
 		if(charOld == char) return;
 		selectedCell.emit('setText', char);
+
+		//表示位置から配列番号を求める
 		var x = selectedCell.x / cellWidth;
 		var y = selectedCell.y / cellHeight;
 		if(charOld == ''){
@@ -556,12 +576,14 @@ function Field(blueprint, width, height){
 		checkAnswer();
 	}
 
+	//マスリスト内での選択マスの移動
 	function selectMove(move){
 		var list = selectedList.cellList;
 		selectPos = ((selectPos + move) + list.length) % list.length;
 		var cell = list[selectPos];
 		selectCell(cell);
 	}
+	//文字入力したときの選択マスの移動
 	function inputMove(move){
 		if(selectedList === undefined) return;
 		if(selectPos == selectedList.cellList.length - 1) return;
@@ -569,16 +591,20 @@ function Field(blueprint, width, height){
 	}
 
 
+	//キーボードからの入力
+	//文字タップ入力
 	this.on('input', function(char){
 		if(selectedCell === undefined) return;
 		if(inputEnd == true) inputMove(1);
 		inputCell(char);
 		tapInput = true;
 	});
+	//矢印キー
 	this.on('selectMove', function(move){
 		if(selectedList === undefined) return;
 		selectMove(move);
 	});
+	//濁点
 	this.on('dakuten', function(){
 		if(selectedCell === undefined) return;
 		var dakuten = '\u3099';
@@ -602,6 +628,7 @@ function Field(blueprint, width, height){
 		self.emit('changeSelect');
 		inputEnd = true;
 	});
+	//半濁点
 	this.on('handakuten', function(){
 		if(selectedCell === undefined) return;
 		var dakuten = '\u309a';
@@ -625,12 +652,14 @@ function Field(blueprint, width, height){
 		self.emit('changeSelect');
 		inputEnd = true;
 	});
+	//フリック入力
 	this.on('flick', function(char){
 		if(selectedCell === undefined) return;
 		if(tapInput == true || inputEnd == true) inputMove(1);
 		inputCell(char);
 		inputEnd = true;
 	});
+	//違うボタンを押した時
 	this.on('changeInput', function(){
 		if(tapInput == true || inputEnd == true) inputMove(1);
 	});
@@ -652,9 +681,9 @@ function Cell(width, height, isActive){
 	//if(isActive === undefined) return;
 	this.isActive = isActive;
 
+	//背景色
 	var backcolor = 0xffffff;
-
-	
+	//背景
 	var g = new PIXI.Graphics();
 	g.beginFill(backcolor);
 	g.lineStyle(2, 0);
@@ -667,6 +696,7 @@ function Cell(width, height, isActive){
 	black.drawRect(space, space, width - space*2, height - space*2);
 	black.endFill();
 
+	//文字
 	var small = (width < height) ? width : height;
 	var style = {
 		fontSize: small * 0.5,
@@ -678,6 +708,7 @@ function Cell(width, height, isActive){
 	this.char.x = width/2;
 	this.char.y = height/2;
 
+	//小さい数字
 	var style = {
 		fontSize: small * 0.2,
 		fill:0x000000,
@@ -713,14 +744,15 @@ function Hintbox(hint, title, width, height){
 
 	var self = this;
 
+	//背景色
 	var backcolor = 0x808080;
-
+	//背景
 	var g = new PIXI.Graphics();
 	g.beginFill(backcolor);
 	//g.lineStyle(2, 0xffffff);
 	g.drawRect(0, 0, width, height);
 	g.endFill();
-
+	//枠線
 	var line = new PIXI.Graphics();
 	line.beginFill(0, 0);
 	line.lineStyle(2, 0xffffff);
@@ -735,17 +767,19 @@ function Hintbox(hint, title, width, height){
 		breakWords: true,
 	}
 
+	//タイトル表示
 	var textTitle = new TextButton(title, style);
 
-	var isSelectKey = false;
-	var canSelectKey = true;
-	var selectedKey;
+	var isSelectKey = false;//カギを選択しているか
+	var canSelectKey = true;//カギは選択できるか
+	var selectedKey;//選択したカギ
 
 	var space = 10;
 	var h = 0;
 	var containerKey = new Pixim.Container();
 	containerKey.y = textTitle.height;
 	var arrayKey = new Array();
+	//カギの作成
 	for(var i = 0; i < hint.length; i++){
 		var num = hint[i].num;
 		var key = new TextButton(num + ',' + hint[i].key, style);
@@ -766,6 +800,7 @@ function Hintbox(hint, title, width, height){
 		arrayKey.push(key);
 	}
 
+	//描画範囲
 	var mask = new PIXI.Graphics();
 	mask.beginFill(0xffffff, 1);
 	mask.drawRect(0, textTitle.height, width, height - textTitle.height);
@@ -777,6 +812,7 @@ function Hintbox(hint, title, width, height){
 		fill:0xffffff,
 	}
 
+	//スクロール処理
 	function textScroll(pos){
 		var c = containerKey;
 		var t = c.children[c.children.length - 1];
@@ -793,7 +829,6 @@ function Hintbox(hint, title, width, height){
 			drawMarker(selectedKey);
 		}
 	}
-
 	var down = false;
 	var pointerY;
 	var containerY;
@@ -823,8 +858,10 @@ function Hintbox(hint, title, width, height){
 	});
 	this.interactive = true;
 
+	//カギ選択枠
 	var marker = new PIXI.Graphics();
 	marker.mask = mask;
+	//選択枠の表示
 	function drawMarker(key){
 		var x = containerKey.x + key.x;
 		var y = containerKey.y + key.y;
@@ -833,22 +870,22 @@ function Hintbox(hint, title, width, height){
 		marker.drawRect(x, y, width, key.t.height);
 		marker.endFill();
 	}
-
+	//カギを選択した時
 	function selectKey(key){
 		isSelectKey = true;
 		selectedKey = key;
 		drawMarker(key);
 	}
-
+	//選択を解除した時
 	function deselectKey(){
 		isSelectKey = false;
 		selectedKey = undefined;
 		marker.clear();
 	}
-
 	this.on('deselectKey', function(){
 		deselectKey();
 	})
+
 
 	this.addChild(g);
 	this.addChild(mask);
@@ -868,10 +905,12 @@ function KeyBoard(){
 
 	var keyWidth = 50;
 	var keyHeight = 30;
-	var keySpace = 5;
+	var keySpace = 5;//キーの間隔
 
-	var selectButton;
+	var selectButton;//選択したボタン
 	var charnum = 0;
+
+	//タップ入力
 	function tapButton(button){
 		if(selectButton !== undefined){
 			if(selectButton != button){
@@ -884,17 +923,21 @@ function KeyBoard(){
 		charnum++;
 	}
 
+	//半透明の黒ベタ
 	var g = new PIXI.Graphics();
+	g.beginFill(0, 0.5);
+	g.drawRect(0, 0, 400, 400);
+	g.endFill();
+	g.visible = false;
 
 	function inFlick(){
-		g.beginFill(0, 0.5);
-		g.drawRect(0, 0, 400, 400);
-		g.endFill();
+		g.visible = true;
 	}
 	function outFlick(){
-		g.clear();
+		g.visible = false;
 	}
 
+	//選択キーの枠線
 	var line = new PIXI.Graphics();
 	function drawAroundLine(num){
 		var b = containerAroundButton.children[num];
@@ -921,6 +964,7 @@ function KeyBoard(){
 	}
 
 	var selectedButton;
+	//文字入力ボタンの作成
 	for(var i = 0; i < CharSet.length; i++){
 		var b = new CharsetButton(CharSet[i], style);
 		b.g.beginFill(0x808080);
@@ -972,6 +1016,7 @@ function KeyBoard(){
 		containerFlickButton.addChild(b);
 	}
 
+	//フリック入力ボタンの作成
 	function createAroundButton(button){
 		var c = containerAroundButton;
 		for(var i = 0; i < button.charset.length; i++){
@@ -1000,6 +1045,7 @@ function KeyBoard(){
 		containerAroundButton.y = button.y;
 	}
 
+	//フリック方向の判定
 	function checkNum(obj){
 		var num;
 		var vx = obj.data.global.x - downPosX;
@@ -1028,10 +1074,13 @@ function KeyBoard(){
 				num = 2;
 			}
 		}
+		//フリック方向に入力ボタンが無かった時
 		if(containerAroundButton.children[num] === undefined) return 0;
-		else return num;
+
+		return num;
 	}
 
+	//フリック開始ボタンとの接触判定
 	function checkOver(pointer, button){
 		var x = button.transform.worldTransform.tx;
 		var y = button.transform.worldTransform.ty;
@@ -1044,6 +1093,7 @@ function KeyBoard(){
 	}
 
 	var containerButton = new Pixim.Container();
+	//その他のボタン作成
 	for(var i = 0; i < 5; i++){
 		var b = new TextButton('',style);
 		b.g.beginFill(0x808080);
@@ -1056,44 +1106,43 @@ function KeyBoard(){
 		b.interactive = true;
 		containerButton.addChild(b);
 	}
-
+	//入力削除ボタン
 	var b = containerButton.children[0];
 	b.t.text = '×';
 	b.on('pointerdown', function(){
 		self.emit('input', '');
 	});
-
+	//濁点
 	var b = containerButton.children[1];
 	b.t.text = '゛';
 	b.on('pointerdown', function(){
 		self.emit('dakuten');
 	});
-
+	//半濁点
 	var b = containerButton.children[2];
 	b.t.text = '゜';
 	b.on('pointerdown', function(){
 		self.emit('handakuten');
 	});
-
+	//左矢印
 	var b = containerButton.children[3];
 	b.t.text = '←';
 	b.on('pointerdown', function(){
 		self.emit('selectMove', -1);
 	});
-
+	//右矢印
 	var b = containerButton.children[4];
 	b.t.text = '→';
 	b.on('pointerdown', function(){
 		self.emit('selectMove', +1);
 	});
 
-
+	//ボタン位置調整
 	for(var i = 0; i < containerFlickButton.children.length; i++){
 		var b = containerFlickButton.children[i];
 		b.x = (keyWidth + keySpace) * parseInt(i % 5);
 		b.y = (keyHeight + keySpace) * parseInt(i / 5);
 	}
-
 	for(var i = 0; i < containerButton.children.length; i++){
 		var b = containerButton.children[i];
 		b.x = (keyWidth + keySpace) * parseInt(i % 5);
@@ -1135,6 +1184,7 @@ function Outgame($){
 			b.g.drawRect(0,0,b.t.width,b.t.height);
 			b.g.endFill();
 			b.on('pointerdown', function(){
+				//jsonから問題を読み込む
 				new PIXI.Loader().add("obj", this.t.text + ".json").load(function(loader, resources){
 					var data = resources.obj.data;
 					self.emit('select', data);
