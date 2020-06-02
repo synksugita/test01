@@ -111,7 +111,6 @@ function Ingame($){
 		});
 		board.on('changeSelect', function(){
 			keyboard.emit('resetKey');
-console.log('change');
 		});
 
 		keyboard = new KeyBoard();
@@ -131,6 +130,9 @@ console.log('change');
 		});
 		keyboard.on('flick', function(char){
 			board.emit('flick', char);
+		});
+		keyboard.on('changeSelect', function(){
+			board.emit('changeInput');
 		});
 
 		t.x = popup.x + 100;
@@ -318,7 +320,10 @@ function Board($, blueprint){
 	this.on('flick', function(char){
 		//field.emit('input', char);
 		//field.emit('selectMove', 1);
-field.emit('flick', char);
+		field.emit('flick', char);
+	});
+	this.on('changeInput', function(){
+		field.emit('changeInput');
 	});
 
 	this.on('setInteractive', function(flag){
@@ -354,7 +359,8 @@ function Field(blueprint, width, height){
 	var selectedList;
 	var selectPos = 0;
 
-var flicked = false;
+	var tapInput = false;
+	var inputEnd = false;
 
 	var listX = new Array();
 	var listY = new Array();
@@ -378,11 +384,11 @@ var flicked = false;
 		if(cell.isActive == false) return;
 
 		if(selectedCell !== undefined){
+/*
 			if(selectedCell == cell){
 				//deselect();
 				return;
 			}
-/*
 			else{
 				self.emit('changeSelect');
 			}
@@ -392,8 +398,9 @@ var flicked = false;
 		cellOnColor(cell);
 		cell.emit('select');
 		selectedCell = cell;
-self.emit('changeSelect');
-flicked = false;
+		self.emit('changeSelect');
+		tapInput = false;
+		inputEnd = false;
 	}
 
 	function tapCell(cell){
@@ -547,19 +554,30 @@ flicked = false;
 			nAnswer--;
 		}
 		checkAnswer();
-flicked = false;
 	}
 
-	this.on('input', function(char){
-		if(selectedCell === undefined) return;
-		inputCell(char);
-	});
-	this.on('selectMove', function(move){
-		if(selectedList === undefined) return;
+	function selectMove(move){
 		var list = selectedList.cellList;
 		selectPos = ((selectPos + move) + list.length) % list.length;
 		var cell = list[selectPos];
 		selectCell(cell);
+	}
+	function inputMove(move){
+		if(selectedList === undefined) return;
+		if(selectPos == selectedList.cellList.length - 1) return;
+		selectMove(move);
+	}
+
+
+	this.on('input', function(char){
+		if(selectedCell === undefined) return;
+		if(inputEnd == true) inputMove(1);
+		inputCell(char);
+		tapInput = true;
+	});
+	this.on('selectMove', function(move){
+		if(selectedList === undefined) return;
+		selectMove(move);
 	});
 	this.on('dakuten', function(){
 		if(selectedCell === undefined) return;
@@ -581,6 +599,8 @@ flicked = false;
 			}
 		}
 		inputCell(char);
+		self.emit('changeSelect');
+		inputEnd = true;
 	});
 	this.on('handakuten', function(){
 		if(selectedCell === undefined) return;
@@ -602,13 +622,18 @@ flicked = false;
 			}
 		}
 		inputCell(char);
+		self.emit('changeSelect');
+		inputEnd = true;
 	});
-this.on('flick', function(char){
-	if(selectedCell === undefined) return;
-	if(flicked == true) this.emit('selectMove', 1);
-	inputCell(char);
-flicked = true;
-});
+	this.on('flick', function(char){
+		if(selectedCell === undefined) return;
+		if(tapInput == true || inputEnd == true) inputMove(1);
+		inputCell(char);
+		inputEnd = true;
+	});
+	this.on('changeInput', function(){
+		if(tapInput == true || inputEnd == true) inputMove(1);
+	});
 
 
 	this.addChild(containerCell);
@@ -851,6 +876,7 @@ function KeyBoard(){
 		if(selectButton !== undefined){
 			if(selectButton != button){
 				charnum = 0;
+				self.emit('changeSelect');
 			}
 		}
 		self.emit('input', button.charset[charnum % button.charset.length]);
